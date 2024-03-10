@@ -2,8 +2,8 @@
 
 import qualified Control.Concurrent as C
 import Control.Monad.Reader
-import qualified Database.PostgreSQL.Simple as PG
 import Data.String
+import qualified Database.PostgreSQL.Simple as PG
 import qualified System.Process as P
 
 databases :: [String]
@@ -19,13 +19,20 @@ listDatabases =
 
 createDatabase :: String -> DatabaseContext ()
 createDatabase name =
-  let statement = fromString $ "CREATE DATABASE " <> name
-   in
-  ask >>= \conn ->
-    liftIO $ void (PG.execute_ conn statement)
+  let statement = fromString $ "CREATE DATABASE " ++ name
+   in ask >>= \conn ->
+        liftIO $ PG.execute_ conn statement >> putStrLn ("Database " ++ name ++ " created")
 
 syncDatabases :: DatabaseContext ()
-syncDatabases = listDatabases >>= \dbs -> mapM_ createDatabase . filter (`notElem` dbs) $ databases
+syncDatabases = do
+  existingDatabases <- listDatabases
+  liftIO $ do
+    putStrLn "Syncing databases..."
+    putStrLn "Existing databases:"
+    mapM_ putStrLn $ (" -" ++) <$> existingDatabases
+    putStrLn "Required databases:"
+    mapM_ putStrLn $ (" -" ++) <$> databases
+  mapM_ createDatabase (filter (`notElem` existingDatabases) databases)
 
 main :: IO ()
 main = do

@@ -1,0 +1,26 @@
+name: pastureen-deployment
+
+dependencies:
+  - base
+  - postgresql-simple
+  - process
+  - mtl
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+executables:
+  deployment-exe:
+    main:                Deploy.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N

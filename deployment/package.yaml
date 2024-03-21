@@ -5,6 +5,7 @@ dependencies:
   - postgresql-simple
   - process
   - mtl
+  - exceptions
 
 ghc-options:
 - -Wall

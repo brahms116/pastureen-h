@@ -3,7 +3,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 import qualified Control.Concurrent as C
 import Control.Monad.Catch
@@ -11,9 +10,6 @@ import Control.Monad.Reader
 import Data.String
 import qualified Database.PostgreSQL.Simple as PG
 import qualified System.Process as P
-
-databases :: [String]
-databases = ["nocodb"]
 
 class (MonadMask m) => MonadInfrastructure conn m | m -> conn where
   listDatabases :: conn -> m [String]
@@ -29,10 +25,6 @@ class (MonadMask m) => MonadInfrastructure conn m | m -> conn where
   bracketTunnel = bracket openTunnel closeTunnel
 
 newtype Config = Config {cfDatabases :: [String]}
-
--- newtype AppM a = AppM {unApp :: ReaderT Config IO a}
---   deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadCatch, MonadMask)
---
 
 type AppM = ReaderT Config IO
 
@@ -91,10 +83,14 @@ fillMissingDbs =
         dbs <- listDatabases c
         required <- requiredDatabases
         let (dbs', report) = dbsToCreate dbs required
-         in do 
-          logMessage report
-          mapM_ (createDatabase c) dbs'
+        logMessage report
+        mapM_ (createDatabase c) dbs'
    in bracketTunnel fill_
 
+application :: (MonadInfrastructure conn m) => m ()
+application = deployDatabase >> fillMissingDbs >> deployApplication
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main =
+  let config = Config ["nocodb"]
+   in runReaderT application config

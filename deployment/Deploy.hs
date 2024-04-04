@@ -157,10 +157,24 @@ fillMissingDbs =
    in bracketTunnel "postgres" fill_
 
 migrateDb :: (MonadInfrastructure conn m) => String -> m ()
-migrateDb dbName = undefined
+migrateDb dbName = do
+  files <- listMigrationFiles dbName
+  bracketTunnel dbName $ migrate_ files
+
+migrate_ :: (MonadInfrastructure conn m) => [MigrationFile] -> conn -> m ()
+migrate_ migrations c = do
+  _ <- prepMigrations c
+  lastTs <- lastMigrationTs c
+  when ((tsFromMigrationFile . head) migrations > lastTs) $ let files = takeWhile (\x -> tsFromMigrationFile x > lastTs) migrations
+                                                                           in mapM_ (applyMigration c) files
+
+migrateDbs :: (MonadInfrastructure conn m) => m ()
+migrateDbs = do
+  dbs <- requiredDatabases
+  mapM_ migrateDb dbs
 
 application :: (MonadInfrastructure conn m) => m ()
-application = deployDatabase >> fillMissingDbs >> deployApplication
+application = deployDatabase >> fillMissingDbs >> migrateDbs >> deployApplication
 
 main :: IO ()
 main =

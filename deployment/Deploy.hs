@@ -14,17 +14,29 @@ import qualified System.Process as P
 class (MonadMask m) => MonadInfrastructure conn m | m -> conn where
   listDatabases :: conn -> m [String]
   createDatabase :: conn -> String -> m ()
-  openTunnel :: m conn
+  openTunnel :: String -> m conn
   closeTunnel :: conn -> m ()
   logMessage :: String -> m ()
   deployApplication :: m ()
   deployDatabase :: m ()
   requiredDatabases :: m [String]
 
-  bracketTunnel :: (conn -> m a) -> m a
-  bracketTunnel = bracket openTunnel closeTunnel
+  bracketTunnel :: String -> (conn -> m a) -> m a
+  bracketTunnel s = bracket (openTunnel s) closeTunnel
 
-newtype Config = Config {cfDatabases :: [String]}
+data Environment = Local | Production
+
+getInfraDirFromEnv :: Environment -> String
+getInfraDirFromEnv Local = "../infrastructure/local"
+getInfraDirFromEnv Production = "../infrastructure/production"
+
+data Config = Config
+  { cfDatabases :: ![String],
+    cfEnvironment :: !Environment
+  }
+
+getInfraDirFromConfig :: Config -> String
+getInfraDirFromConfig = getInfraDirFromEnv . cfEnvironment
 
 type AppM = ReaderT Config IO
 
@@ -32,12 +44,16 @@ instance MonadInfrastructure (P.ProcessHandle, PG.Connection) AppM where
   logMessage = liftIO . putStrLn
 
   deployDatabase =
-    liftIO $
-      P.callCommand "cd ../infrastructure/local/db && terraform init && terraform apply -auto-approve"
+    asks getInfraDirFromConfig >>= \d ->
+      liftIO $
+        P.callCommand $
+          "cd " ++ d ++ "/db terraform init && terraform apply -auto-approve"
 
   deployApplication =
-    liftIO $
-      P.callCommand "cd ../infrastructure/local/application && terraform init && terraform apply -auto-approve"
+    asks getInfraDirFromConfig >>= \d ->
+      liftIO $
+        P.callCommand $
+          "cd " ++ d ++ "/application terraform init && terraform apply -auto-approve"
 
   listDatabases (_, c) =
     liftIO $
@@ -47,13 +63,13 @@ instance MonadInfrastructure (P.ProcessHandle, PG.Connection) AppM where
     let statement = fromString $ "CREATE DATABASE " ++ name
      in liftIO $ PG.execute_ c statement >> putStrLn ("Database " ++ name ++ " created")
 
-  openTunnel = do
+  openTunnel dbName = do
     liftIO $ do
       P.callCommand "kubectl config set-context --current --namespace=pastureen"
       ph <- P.spawnCommand "kubectl port-forward svc/database 5432:5432"
       -- Wait 3 seconds for the port-forward to be ready
       C.threadDelay 3000000
-      conn <- PG.connectPostgreSQL "postgresql://postgres@localhost:5432/postgres"
+      conn <- PG.connectPostgreSQL $ fromString $ "postgresql://postgres@localhost:5432/" ++ dbName
       return (ph, conn)
 
   closeTunnel (ph, _) = liftIO $ P.terminateProcess ph
@@ -85,12 +101,12 @@ fillMissingDbs =
         let (dbs', report) = dbsToCreate dbs required
         logMessage report
         mapM_ (createDatabase c) dbs'
-   in bracketTunnel fill_
+   in bracketTunnel "postgres" fill_
 
 application :: (MonadInfrastructure conn m) => m ()
 application = deployDatabase >> fillMissingDbs >> deployApplication
 
 main :: IO ()
 main =
-  let config = Config ["nocodb"]
+  let config = Config ["nocodb"] Local
    in runReaderT application config

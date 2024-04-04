@@ -159,14 +159,14 @@ fillMissingDbs =
 migrateDb :: (MonadInfrastructure conn m) => String -> m ()
 migrateDb dbName = do
   files <- listMigrationFiles dbName
-  bracketTunnel dbName $ migrate_ files
+  bracketTunnel dbName $ migrateDb' files
 
-migrate_ :: (MonadInfrastructure conn m) => [MigrationFile] -> conn -> m ()
-migrate_ migrations c = do
-  _ <- prepMigrations c
-  lastTs <- lastMigrationTs c
-  when ((tsFromMigrationFile . head) migrations > lastTs) $ let files = takeWhile (\x -> tsFromMigrationFile x > lastTs) migrations
-                                                                           in mapM_ (applyMigration c) files
+migrateDb' :: (MonadInfrastructure conn m) => [MigrationFile] -> conn -> m ()
+migrateDb' migrations c = do
+  lastTs <- prepMigrations c >> lastMigrationTs c
+  mapM_ (applyMigration c) $ filterMigrations migrations lastTs
+  where
+    filterMigrations ms ts = takeWhile (\x -> tsFromMigrationFile x > ts) ms
 
 migrateDbs :: (MonadInfrastructure conn m) => m ()
 migrateDbs = do

@@ -7,8 +7,10 @@
 import qualified Control.Concurrent as C
 import Control.Monad.Catch
 import Control.Monad.Reader
+import Data.List (sortBy)
 import Data.String
 import qualified Database.PostgreSQL.Simple as PG
+import System.Directory
 import qualified System.Process as P
 
 class (MonadMask m) => MonadInfrastructure conn m | m -> conn where
@@ -21,6 +23,18 @@ class (MonadMask m) => MonadInfrastructure conn m | m -> conn where
   deployDatabase :: m ()
   requiredDatabases :: m [String]
 
+  -- Returns a list of migration files given a database name --
+  listMigrationFiles :: String -> m [MigrationFile]
+
+  -- Returns the timestamp of the last migration applied to the database --
+  lastMigrationTs :: conn -> m Int
+
+  -- Applies a single migration aginst a connection --
+  applyMigration :: conn -> MigrationFile -> m ()
+
+  -- Prepare the migrations tables in the database --
+  prepMigrations :: conn -> m ()
+
   bracketTunnel :: String -> (conn -> m a) -> m a
   bracketTunnel s = bracket (openTunnel s) closeTunnel
 
@@ -31,14 +45,27 @@ getInfraDirFromEnv Local = "../infrastructure/local"
 getInfraDirFromEnv Production = "../infrastructure/production"
 
 data Config = Config
-  { cfDatabases :: ![String],
-    cfEnvironment :: !Environment
+  { cfEnvironment :: !Environment
   }
 
 getInfraDirFromConfig :: Config -> String
 getInfraDirFromConfig = getInfraDirFromEnv . cfEnvironment
 
 type AppM = ReaderT Config IO
+
+newtype MigrationFile = MigrationFile String
+
+tsFromMigrationFile :: MigrationFile -> Int
+tsFromMigrationFile (MigrationFile s) = read $ takeWhile (/= '-') s
+
+nameFromMigrationFile :: MigrationFile -> String
+nameFromMigrationFile (MigrationFile s) = drop 1 $ dropWhile (/= '-') s
+
+instance Eq MigrationFile where
+  (==) a b = tsFromMigrationFile a == tsFromMigrationFile b
+
+instance Ord MigrationFile where
+  compare a b = compare (tsFromMigrationFile a) (tsFromMigrationFile b)
 
 instance MonadInfrastructure (P.ProcessHandle, PG.Connection) AppM where
   logMessage = liftIO . putStrLn
@@ -74,7 +101,33 @@ instance MonadInfrastructure (P.ProcessHandle, PG.Connection) AppM where
 
   closeTunnel (ph, _) = liftIO $ P.terminateProcess ph
 
-  requiredDatabases = asks cfDatabases
+  requiredDatabases = liftIO $ do
+    items <- listDirectory "../migrations"
+    areDirs <- mapM doesDirectoryExist items
+    return [d | (d, m) <- zip items areDirs, m]
+
+  listMigrationFiles dbName =
+    liftIO $
+      sortBy (flip compare) . fmap MigrationFile <$> listDirectory ("../migrations/" ++ dbName)
+
+  lastMigrationTs (_, c) =
+    let statement = "SELECT ts FROM migration ORDER BY ts DESC LIMIT 1"
+     in liftIO $ head . fmap PG.fromOnly <$> (PG.query_ c statement :: IO [PG.Only Int])
+
+  applyMigration (_, c) migration =
+    let name = nameFromMigrationFile migration
+        timestamp = (show . tsFromMigrationFile) migration
+        (MigrationFile filename) = migration
+        insertMigrationStatement = "INSERT INTO migration (ts, name) VALUES (" ++ timestamp ++ ", " ++ name ++ "); \n"
+        fileContents = readFile $ "../migrations/" ++ filename
+        statement = (insertMigrationStatement ++) <$> fileContents
+     in liftIO $
+          statement
+            >>= \s -> PG.execute_ c (fromString s) >> putStrLn ("Applied SQL:\n" ++ s ++ "\n")
+
+  prepMigrations (_, c) = liftIO $ do
+    statement <- fromString <$> readFile "../migrations/migration.sql"
+    void (PG.execute_ c statement)
 
 dbsToCreate :: [String] -> [String] -> ([String], String)
 dbsToCreate existing required =
@@ -103,10 +156,13 @@ fillMissingDbs =
         mapM_ (createDatabase c) dbs'
    in bracketTunnel "postgres" fill_
 
+migrateDb :: (MonadInfrastructure conn m) => String -> m ()
+migrateDb dbName = undefined
+
 application :: (MonadInfrastructure conn m) => m ()
 application = deployDatabase >> fillMissingDbs >> deployApplication
 
 main :: IO ()
 main =
-  let config = Config ["nocodb"] Local
+  let config = Config Local
    in runReaderT application config

@@ -6,6 +6,7 @@ dependencies:
   - process
   - mtl
   - exceptions
+  - directory
 
 ghc-options:
 - -Wall

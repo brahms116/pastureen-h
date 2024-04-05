@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    key    = "pastureen/local-application.tfstate"
+    key    = "pastureen/production-application.tfstate"
     bucket = "pastureen-tf-state-store"
     region = "ap-southeast-2"
   }
@@ -9,7 +9,7 @@ terraform {
 provider "helm" {
   kubernetes {
     config_path = "~/.kube/config"
-    config_context = "docker-desktop"
+    config_context = "context-czktpqrhmza"
   }
 }
 
@@ -19,5 +19,5 @@ provider "kubernetes" {
 
 module "application_deployment" {
   source      = "../../module-application"
-  environment = "LOCAL"
+  environment = "PRODUCTION"
 }

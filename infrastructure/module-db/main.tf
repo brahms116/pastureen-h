@@ -1,8 +1,8 @@
 locals {
   namespace     = "pastureen"
   hostnode      = "docker-desktop"
-  storage_class = var.environment == "LOCAL" ? "hostpath" : "???"
-  mount_path    = var.environment == "LOCAL" ? "/Users/david/pg-data" : "???"
+  storage_class = var.environment == "LOCAL" ? "hostpath" : "longhorn"
+  mount_path    = var.environment == "LOCAL" ? "/Users/david/pg-data" : "/pg-data"
 }
 
 resource "kubernetes_namespace" "main" {
@@ -31,6 +31,7 @@ resource "kubernetes_service" "database" {
 }
 
 resource "kubernetes_persistent_volume" "data" {
+  count = var.environment == "LOCAL" ? 1 : 0
   metadata {
     name = "data"
     labels = {
@@ -41,7 +42,7 @@ resource "kubernetes_persistent_volume" "data" {
   spec {
     access_modes = ["ReadWriteOnce"]
     capacity = {
-      storage = "8Gi"
+      storage = "20Gi"
     }
     persistent_volume_reclaim_policy = "Retain"
     storage_class_name               = local.storage_class
@@ -86,11 +87,16 @@ resource "kubernetes_persistent_volume_claim" "data" {
   }
 
   spec {
-    selector {
-      match_labels = {
-        pv_name = "data"
+    dynamic "selector" {
+      for_each = var.environment == "LOCAL" ? [true] : []
+      content {
+        match_labels = {
+          pv_name = "data"
+        }
       }
     }
+
+    storage_class_name = var.environment == "LOCAL" ? null : local.storage_class
 
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -139,6 +145,15 @@ resource "kubernetes_deployment" "database" {
             name  = "POSTGRES_PASSWORD"
             value = "my_password"
           }
+
+          dynamic "env" {
+            for_each = var.environment == "LOCAL" ? [] : [true]
+            content {
+              name  = "PGDATA"
+              value = "/var/lib/postgresql/data/pgdata"
+            }
+          }
+
           port {
             container_port = 5432
           }

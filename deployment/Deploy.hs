@@ -9,6 +9,7 @@ import Control.Monad.Catch
 import Control.Monad.Reader
 import Data.List (sortBy)
 import Data.String
+import qualified Data.Time.Clock.POSIX as T
 import qualified Database.PostgreSQL.Simple as PG
 import System.Directory
 import qualified System.Process as P
@@ -23,17 +24,21 @@ class (MonadMask m) => MonadInfrastructure conn m | m -> conn where
   deployDatabase :: m ()
   requiredDatabases :: m [String]
 
-  -- Returns a list of migration files given a database name --
+  -- | Returns a list of migration files given a database name
   listMigrationFiles :: String -> m [MigrationFile]
 
-  -- Returns the timestamp of the last migration applied to the database --
-  lastMigrationTs :: conn -> m Int
+  -- | Returns the timestamp of the last migration applied to the database
+  lastMigrationTs :: conn -> m (Maybe Int)
 
-  -- Applies a single migration aginst a connection --
+  -- | Applies a single migration aginst a connection
   applyMigration :: conn -> MigrationFile -> m ()
 
-  -- Prepare the migrations tables in the database --
+  -- | Prepare the migrations tables in the database
   prepMigrations :: conn -> m ()
+
+  -- | Creates a migration file
+  -- Given a database name and the name of the migration returns the path to the created file
+  createMigrationFile :: String -> String -> m String
 
   bracketTunnel :: String -> (conn -> m a) -> m a
   bracketTunnel s = bracket (openTunnel s) closeTunnel
@@ -53,13 +58,16 @@ getInfraDirFromConfig = getInfraDirFromEnv . cfEnvironment
 
 type AppM = ReaderT Config IO
 
-newtype MigrationFile = MigrationFile String
+data MigrationFile = MigrationFile String String
 
 tsFromMigrationFile :: MigrationFile -> Int
-tsFromMigrationFile (MigrationFile s) = read $ takeWhile (/= '-') s
+tsFromMigrationFile (MigrationFile s _) = read $ takeWhile (/= '-') s
 
 nameFromMigrationFile :: MigrationFile -> String
-nameFromMigrationFile (MigrationFile s) = drop 1 $ dropWhile (/= '-') s
+nameFromMigrationFile (MigrationFile s _) = (takeWhile (/= '.') . drop 1 . dropWhile (/= '-')) s
+
+fullPathFromMigrationFile :: MigrationFile -> String
+fullPathFromMigrationFile (MigrationFile s db) = "../migrations/" ++ db ++ "/" ++ s
 
 instance Eq MigrationFile where
   (==) a b = tsFromMigrationFile a == tsFromMigrationFile b
@@ -103,23 +111,27 @@ instance MonadInfrastructure (P.ProcessHandle, PG.Connection) AppM where
 
   requiredDatabases = liftIO $ do
     items <- listDirectory "../migrations"
-    areDirs <- mapM doesDirectoryExist items
+    areDirs <- mapM (doesDirectoryExist . ("../migrations/" ++)) items
     return [d | (d, m) <- zip items areDirs, m]
 
   listMigrationFiles dbName =
     liftIO $
-      sortBy (flip compare) . fmap MigrationFile <$> listDirectory ("../migrations/" ++ dbName)
+      sortBy (flip compare) . fmap (`MigrationFile` dbName) <$> listDirectory ("../migrations/" ++ dbName)
 
   lastMigrationTs (_, c) =
     let statement = "SELECT ts FROM migration ORDER BY ts DESC LIMIT 1"
-     in liftIO $ head . fmap PG.fromOnly <$> (PG.query_ c statement :: IO [PG.Only Int])
+     in liftIO $ do
+          tss <- fmap PG.fromOnly <$> (PG.query_ c statement :: IO [PG.Only Int])
+          case tss of
+            [] -> return Nothing
+            ts : _ -> return $ Just ts
 
   applyMigration (_, c) migration =
     let name = nameFromMigrationFile migration
         timestamp = (show . tsFromMigrationFile) migration
-        (MigrationFile filename) = migration
-        insertMigrationStatement = "INSERT INTO migration (ts, name) VALUES (" ++ timestamp ++ ", " ++ name ++ "); \n"
-        fileContents = readFile $ "../migrations/" ++ filename
+        filepath = fullPathFromMigrationFile migration
+        insertMigrationStatement = "INSERT INTO migration (ts, name) VALUES (" ++ timestamp ++ ", '" ++ name ++ "'); \n"
+        fileContents = readFile filepath
         statement = (insertMigrationStatement ++) <$> fileContents
      in liftIO $
           statement
@@ -128,6 +140,13 @@ instance MonadInfrastructure (P.ProcessHandle, PG.Connection) AppM where
   prepMigrations (_, c) = liftIO $ do
     statement <- fromString <$> readFile "../migrations/migration.sql"
     void (PG.execute_ c statement)
+
+  createMigrationFile dbName name =
+    let prefix = "../migrations/" ++ dbName ++ "/"
+        filepath =
+          (prefix ++) . (++ "-" ++ name ++ ".sql") . show <$> T.getPOSIXTime
+        content = "-- Add your migration here"
+     in liftIO $ filepath >>= \p -> writeFile p content >> return p
 
 dbsToCreate :: [String] -> [String] -> ([String], String)
 dbsToCreate existing required =
@@ -166,7 +185,8 @@ migrateDb' migrations c = do
   lastTs <- prepMigrations c >> lastMigrationTs c
   mapM_ (applyMigration c) $ filterMigrations migrations lastTs
   where
-    filterMigrations ms ts = takeWhile (\x -> tsFromMigrationFile x > ts) ms
+    filterMigrations ms (Just ts) = takeWhile (\x -> tsFromMigrationFile x > ts) ms
+    filterMigrations ms Nothing = ms
 
 migrateDbs :: (MonadInfrastructure conn m) => m ()
 migrateDbs = do

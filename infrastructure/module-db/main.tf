@@ -1,6 +1,6 @@
 locals {
   namespace     = "pastureen"
-  hostnode      = var.environment == "LOCAL" ? "docker-desktop" : "???"
+  hostnode      = "docker-desktop"
   storage_class = var.environment == "LOCAL" ? "hostpath" : "???"
   mount_path    = var.environment == "LOCAL" ? "/Users/david/pg-data" : "???"
 }
@@ -62,13 +62,16 @@ resource "kubernetes_persistent_volume" "data" {
       }
     }
 
-    node_affinity {
-      required {
-        node_selector_term {
-          match_expressions {
-            key      = "kubernetes.io/hostname"
-            operator = "In"
-            values   = [local.hostnode]
+    dynamic "node_affinity" {
+      for_each = var.environment == "LOCAL" ? [local.hostnode] : []
+      content {
+        required {
+          node_selector_term {
+            match_expressions {
+              key      = "kubernetes.io/hostname"
+              operator = "In"
+              values   = [local.hostnode]
+            }
           }
         }
       }
@@ -98,9 +101,7 @@ resource "kubernetes_persistent_volume_claim" "data" {
   }
 }
 
-
-# Single node k8 so why not
-resource "kubernetes_pod" "database" {
+resource "kubernetes_deployment" "database" {
   metadata {
     name      = "database"
     namespace = local.namespace
@@ -110,27 +111,50 @@ resource "kubernetes_pod" "database" {
   }
 
   spec {
-    container {
-      name  = "database"
-      image = "postgres:13"
-      env {
-        name  = "POSTGRES_PASSWORD"
-        value = "my_password"
-      }
-      port {
-        container_port = 5432
-      }
+    replicas = 1
+    strategy {
+      type = "Recreate"
+    }
 
-      volume_mount {
-        name       = "data"
-        mount_path = "/var/lib/postgresql/data"
+    selector {
+      match_labels = {
+        app = "database"
       }
     }
 
-    volume {
-      name = "data"
-      persistent_volume_claim {
-        claim_name = kubernetes_persistent_volume_claim.data.metadata.0.name
+    template {
+      metadata {
+        name      = "database"
+        namespace = local.namespace
+        labels = {
+          app = "database"
+        }
+      }
+
+      spec {
+        container {
+          name  = "database"
+          image = "postgres:13"
+          env {
+            name  = "POSTGRES_PASSWORD"
+            value = "my_password"
+          }
+          port {
+            container_port = 5432
+          }
+
+          volume_mount {
+            name       = "data"
+            mount_path = "/var/lib/postgresql/data"
+          }
+        }
+
+        volume {
+          name = "data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.data.metadata.0.name
+          }
+        }
       }
     }
   }

@@ -23,6 +23,14 @@ resource "helm_release" "traefik_proxy" {
         value = "noco.davidkwong.net"
       },
       {
+        name  = "ports.websecure.tls.domains[1].main"
+        value = "www.davidkwong.net"
+      },
+      {
+        name  = "ports.websecure.tls.domains[2].main"
+        value = "davidkwong.net"
+      },
+      {
         name = "certResolvers.letsencrypt.email"
         value = "davidkwong17@gmail.com"
       },

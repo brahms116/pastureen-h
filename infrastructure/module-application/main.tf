@@ -15,20 +15,16 @@ resource "helm_release" "traefik_proxy" {
   dynamic "set" {
     for_each = var.environment == "LOCAL" ? [] : [
       {
+        name = "ports.web.redirectTo.port"
+        value = "websecure"
+      },
+      {
         name  = "ports.websecure.tls.certResolver"
         value = "letsencrypt"
       },
       {
-        name  = "ports.websecure.tls.domains[0].main"
-        value = "noco.davidkwong.net"
-      },
-      {
-        name  = "ports.websecure.tls.domains[1].main"
-        value = "www.davidkwong.net"
-      },
-      {
-        name  = "ports.websecure.tls.domains[2].main"
-        value = "davidkwong.net"
+        name  = "ports.websecure.tls.domains"
+        value = "null"
       },
       {
         name = "certResolvers.letsencrypt.email"

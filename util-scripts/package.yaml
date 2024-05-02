@@ -1,4 +1,4 @@
-name: pastureen-deployment
+name: util-scripts
 
 dependencies:
   - base
@@ -31,4 +31,4 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - pastureen-deployment
+    - util-scripts

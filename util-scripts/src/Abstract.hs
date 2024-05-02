@@ -3,8 +3,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
-module Infrastructure (
-  MonadInfrastructure (..),
+module Abstract (
+  MonadAbstract (..),
   MigrationFile (..),
   tsFromMigrationFile,
   nameFromMigrationFile,
@@ -39,7 +39,7 @@ instance Eq MigrationFile where
 instance Ord MigrationFile where
   compare a b = compare (tsFromMigrationFile a) (tsFromMigrationFile b)
 
-class (MonadMask m) => MonadInfrastructure conn m | m -> conn where
+class (MonadMask m) => MonadAbstract conn m | m -> conn where
   -- | Returns a list of database names given a connection
   listDatabases :: conn -> m [String]
 

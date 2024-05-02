@@ -1,6 +1,6 @@
 module Pipeline (deploymentPipeline) where
 
-import Infrastructure
+import Abstract
 
 -- | Determines the list of databases to create given the existing and required databases names.
 -- Returns the list of databases names to create and a respective log message
@@ -22,7 +22,7 @@ dbsToCreate existing required =
           ++ msgForCreate
 
 -- | Fills creates the required databases that are missing
-fillMissingDbs :: (MonadInfrastructure conn m) => m ()
+fillMissingDbs :: (MonadAbstract conn m) => m ()
 fillMissingDbs =
   let fill_ c = do
         dbs <- listDatabases c
@@ -33,14 +33,14 @@ fillMissingDbs =
    in bracketTunnel "postgres" fill_
 
 -- | Migrates a database given a database name
-migrateDb :: (MonadInfrastructure conn m) => String -> m ()
+migrateDb :: (MonadAbstract conn m) => String -> m ()
 migrateDb dbName = do
   files <- listMigrationFiles dbName
   bracketTunnel dbName $ migrateDb' files
 
 -- | Migrates a database given a list of migration files and a connection
 -- helper function for migrateDb
-migrateDb' :: (MonadInfrastructure conn m) => [MigrationFile] -> conn -> m ()
+migrateDb' :: (MonadAbstract conn m) => [MigrationFile] -> conn -> m ()
 migrateDb' migrations c = do
   lastTs <- prepMigrations c >> lastMigrationTs c
   mapM_ (applyMigration c) $ filterMigrations migrations lastTs
@@ -49,10 +49,10 @@ migrateDb' migrations c = do
     filterMigrations ms Nothing = ms
 
 -- | Migrates all the required databases
-migrateDbs :: (MonadInfrastructure conn m) => m ()
+migrateDbs :: (MonadAbstract conn m) => m ()
 migrateDbs = do
   dbs <- requiredDatabases
   mapM_ migrateDb dbs
 
-deploymentPipeline :: (MonadInfrastructure conn m) => m ()
+deploymentPipeline :: (MonadAbstract conn m) => m ()
 deploymentPipeline = deployDatabase >> fillMissingDbs >> migrateDbs >> deployApplication

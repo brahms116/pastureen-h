@@ -16,7 +16,7 @@ import Data.List (sortBy)
 import Data.String
 import qualified Data.Time.Clock.POSIX as T
 import qualified Database.PostgreSQL.Simple as PG
-import Infrastructure
+import Abstract
 import System.Directory
 import qualified System.Process as P
 
@@ -35,7 +35,7 @@ envKubeContext Production = "context-czktpqrhmza"
 
 type AppM = ReaderT Environment IO
 
-instance MonadInfrastructure (P.ProcessHandle, PG.Connection) AppM where
+instance MonadAbstract (P.ProcessHandle, PG.Connection) AppM where
   logMessage = liftIO . putStrLn
 
   deployDatabase =

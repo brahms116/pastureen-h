@@ -11,7 +11,7 @@ build-type:     Simple
 library
   exposed-modules:
       Abstract
-      Application
+      Impl
       Pipeline
   other-modules:
       Paths_util_scripts

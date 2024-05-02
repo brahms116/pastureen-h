@@ -11,7 +11,7 @@ build-type:     Simple
 library
   exposed-modules:
       Abstract
-      Config
+      Command
       Impl
       Service
   other-modules:

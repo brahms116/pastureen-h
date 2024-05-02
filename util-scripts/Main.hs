@@ -7,7 +7,7 @@ module Main (main) where
 
 import Impl
 import Control.Monad.Reader
-import Pipeline
+import Service
 
 main :: IO ()
 main =

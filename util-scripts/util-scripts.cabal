@@ -11,8 +11,9 @@ build-type:     Simple
 library
   exposed-modules:
       Abstract
+      Config
       Impl
-      Pipeline
+      Service
   other-modules:
       Paths_util_scripts
   hs-source-dirs:

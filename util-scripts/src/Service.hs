@@ -1,4 +1,4 @@
-module Pipeline (deploymentPipeline) where
+module Service (deploymentPipeline) where
 
 import Abstract
 

@@ -1,6 +1,13 @@
 module Service (deploymentPipeline) where
 
 import Abstract
+import Control.Monad.Reader
+
+envDbEnvs :: Environment -> [DbEnvironment]
+-- Include the test database when its ready
+-- envDbEnvs Local = [DbLocal, DbTest]
+envDbEnvs Local = [DbLocal]
+envDbEnvs Production = [DbProduction]
 
 -- | Determines the list of databases to create given the existing and required databases names.
 -- Returns the list of databases names to create and a respective log message
@@ -22,7 +29,7 @@ dbsToCreate existing required =
           ++ msgForCreate
 
 -- | Fills creates the required databases that are missing
-fillMissingDbs :: (MonadAbstract conn m) => m ()
+fillMissingDbs :: (MonadAbstract conn m) => ReaderT Environment m ()
 fillMissingDbs =
   let fill_ c = do
         dbs <- listDatabases c
@@ -30,13 +37,14 @@ fillMissingDbs =
         let (dbs', report) = dbsToCreate dbs required
         logMessage report
         mapM_ (createDatabase c) dbs'
-   in bracketTunnel "postgres" fill_
+   in asks envDbEnvs >>= \dbEnvs ->
+        lift $ mapM_ (\x -> bracketTunnel "postgres" x fill_) dbEnvs
 
--- | Migrates a database given a database name
-migrateDb :: (MonadAbstract conn m) => String -> m ()
-migrateDb dbName = do
+-- | Migrates a database given a database name and the dbEnvrionment its in
+migrateDb :: (MonadAbstract conn m) => String -> DbEnvironment -> m ()
+migrateDb dbName dbEnv = do
   files <- listMigrationFiles dbName
-  bracketTunnel dbName $ migrateDb' files
+  bracketTunnel dbName dbEnv $ migrateDb' files
 
 -- | Migrates a database given a list of migration files and a connection
 -- helper function for migrateDb
@@ -49,10 +57,19 @@ migrateDb' migrations c = do
     filterMigrations ms Nothing = ms
 
 -- | Migrates all the required databases
-migrateDbs :: (MonadAbstract conn m) => m ()
+migrateDbs :: (MonadAbstract conn m) => ReaderT Environment m ()
 migrateDbs = do
-  dbs <- requiredDatabases
-  mapM_ migrateDb dbs
+  dbEnvs <- asks envDbEnvs
+  dbs <- lift requiredDatabases
+  lift $ mapM_ (uncurry migrateDb) [(db, dbEnv) | db <- dbs, dbEnv <- dbEnvs]
 
-deploymentPipeline :: (MonadAbstract conn m) => m ()
-deploymentPipeline = deployDatabase >> fillMissingDbs >> migrateDbs >> deployApplication
+-- | Wraps deployDatbase it in ReaderT
+deployDatabase' :: (MonadAbstract conn m) => ReaderT Environment m ()
+deployDatabase' = ask >>= \x -> lift $ deployDatabase x
+
+-- | Wraps deployApplication in ReaderT
+deployApplication' :: (MonadAbstract conn m) => ReaderT Environment m ()
+deployApplication' = ask >>= \x -> lift $ deployApplication x
+
+deploymentPipeline :: (MonadAbstract conn m) => ReaderT Environment m ()
+deploymentPipeline = deployDatabase' >> fillMissingDbs >> migrateDbs >> deployApplication'

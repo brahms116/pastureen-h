@@ -5,11 +5,9 @@
 
 module Main (main) where
 
-import Impl
-import Control.Monad.Reader
 import Service
+import Abstract
+import Control.Monad.Reader
 
 main :: IO ()
-main =
-  let env = Local
-   in runReaderT deploymentPipeline env
+main = runReaderT deploymentPipeline Local 

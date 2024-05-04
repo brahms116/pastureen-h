@@ -11,7 +11,6 @@ build-type:     Simple
 library
   exposed-modules:
       Abstract
-      Command
       Service
   other-modules:
       Paths_util_scripts

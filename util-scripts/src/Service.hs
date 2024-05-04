@@ -73,3 +73,18 @@ deployApplication' = ask >>= \x -> lift $ deployApplication x
 
 deploymentPipeline :: (MonadAbstract conn m) => ReaderT Environment m ()
 deploymentPipeline = deployDatabase' >> fillMissingDbs >> migrateDbs >> deployApplication'
+
+-- ### COMMANDS
+
+data Command = Deploy !Environment | CreateMigration !String | Plan !Environment
+
+parseCommand :: [String] -> Either String Command
+parseCommand ["--help"] = undefined
+parseCommand ["deploy", "prod"] = Right $ Deploy Production
+parseCommand ["deploy"] = Right $ Deploy Local
+parseCommand ["deploy", "local"] = Right $ Deploy Local
+parseCommand ["plan", "prod"] = Right $ Plan Production
+parseCommand ["plan"] = Right $ Plan Local
+parseCommand ["plan", "local"] = Right $ Plan Local
+parseCommand ["new-migration", x] = Right $ CreateMigration x
+parseCommand _ = Left "Failed to parse command, run with --help for instructions"

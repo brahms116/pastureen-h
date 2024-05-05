@@ -17,7 +17,6 @@ module Abstract
     defaultOverrides,
     setOpenTunnel,
     setCloseTunnel,
-    setMigrationDir,
   )
 where
 
@@ -59,9 +58,9 @@ instance Eq MigrationFile where
 instance Ord MigrationFile where
   compare a b = compare (tsFromMigrationFile a) (tsFromMigrationFile b)
 
-data Environment = Local | Production
+data Environment = Local | Production deriving (Show)
 
-data DbEnvironment = DbLocal | DbTest | DbProduction
+data DbEnvironment = DbLocal | DbTest | DbProduction deriving (Show)
 
 class (MonadMask m) => MonadAbstract conn m | m -> conn where
   -- | Returns a list of database names given a connection
@@ -202,17 +201,14 @@ data TestOverrides = Overrides
     migrationDir :: String
   }
 
-defaultOverrides :: TestOverrides
-defaultOverrides = Overrides Nothing Nothing "../test-migrations"
+defaultOverrides :: String -> TestOverrides
+defaultOverrides = Overrides Nothing Nothing
 
-setOpenTunnel :: (String -> DbEnvironment -> IO (P.ProcessHandle, PG.Connection)) -> TestOverrides
-setOpenTunnel f = defaultOverrides {oOpenTunnel = Just f}
+setOpenTunnel :: (String -> DbEnvironment -> IO (P.ProcessHandle, PG.Connection)) -> TestOverrides -> TestOverrides
+setOpenTunnel f t = t {oOpenTunnel = Just f}
 
-setCloseTunnel :: ((P.ProcessHandle, PG.Connection) -> IO ()) -> TestOverrides
-setCloseTunnel f = defaultOverrides {oCloseTunnel = Just f}
-
-setMigrationDir :: String -> TestOverrides
-setMigrationDir d = defaultOverrides {migrationDir = d}
+setCloseTunnel :: ((P.ProcessHandle, PG.Connection) -> IO ()) -> TestOverrides -> TestOverrides
+setCloseTunnel f t = t {oCloseTunnel = Just f}
 
 instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides IO) where
   listDatabases = lift . listDatabases
@@ -237,7 +233,11 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides I
 
   deployDatabase = lift . deployDatabase
 
-  requiredDatabases = lift requiredDatabases
+  requiredDatabases = do
+    dir <- asks migrationDir
+    items <- lift $ listDirectory dir
+    areDirs <- lift $ mapM (doesDirectoryExist . ((dir ++ "/") ++)) items
+    return [d | (d, m) <- zip items areDirs, m]
 
   listMigrationFiles = lift . listMigrationFiles
 

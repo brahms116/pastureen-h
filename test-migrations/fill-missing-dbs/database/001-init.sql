@@ -1,0 +1,3 @@
+CREATE TABLE Dummy (
+  id INTEGER PRIMARY KEY,
+);

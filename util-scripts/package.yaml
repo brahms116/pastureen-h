@@ -8,6 +8,7 @@ dependencies:
   - exceptions
   - directory
   - time
+  - hspec
 
 ghc-options:
 - -Wall
@@ -24,8 +25,19 @@ library:
   source-dirs: src
 
 executables:
-  deployment-exe:
+  util-scripts-exe:
     main:                Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - util-scripts
+
+tests:
+  util-scripts-test:
+    main:                Spec.hs
+    source-dirs:         test
     ghc-options:
     - -threaded
     - -rtsopts

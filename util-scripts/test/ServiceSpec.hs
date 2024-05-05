@@ -47,7 +47,7 @@ runFut :: ReaderT TestOverrides IO ()
 runFut = runReaderT fillMissingDbs Production
 
 testFut :: IO Bool
-testFut = runReaderT runFut overrides >> return True
+testFut = runReaderT runFut overrides >> assertFilledDbs
 
 assertFilledDbs :: IO Bool
 assertFilledDbs = do

@@ -1,30 +1,40 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Abstract
   ( MonadAbstract (..),
     MigrationFile (..),
-    Environment(..),
-    DbEnvironment(..),
+    Environment (..),
+    DbEnvironment (..),
     tsFromMigrationFile,
     nameFromMigrationFile,
-    fullPathFromMigrationFile,
+    TestOverrides (..),
+    defaultOverrides,
+    setOpenTunnel,
+    setCloseTunnel,
+    setMigrationDir,
   )
 where
 
 -- ## IO IMPORTS
 import qualified Control.Concurrent as C
+import Control.Monad
 import Control.Monad.Catch
+-- ##
+
+import Control.Monad.Reader
 import Data.List (sortBy)
 import Data.String
+import qualified Data.Time.Clock.POSIX as T
 import qualified Database.PostgreSQL.Simple as PG
 import System.Directory
 import qualified System.Process as P
-import Control.Monad
-import qualified Data.Time.Clock.POSIX as T
+
 -- ##
 
 -- | Represents a migration file
@@ -42,10 +52,6 @@ tsFromMigrationFile (MigrationFile s _) = read $ takeWhile (/= '-') s
 -- | Extracts the name from a migration file
 nameFromMigrationFile :: MigrationFile -> String
 nameFromMigrationFile (MigrationFile s _) = (takeWhile (/= '.') . drop 1 . dropWhile (/= '-')) s
-
--- | Extracts the full path to the migration file
-fullPathFromMigrationFile :: MigrationFile -> String
-fullPathFromMigrationFile (MigrationFile s db) = "../migrations/" ++ db ++ "/" ++ s
 
 instance Eq MigrationFile where
   (==) a b = tsFromMigrationFile a == tsFromMigrationFile b
@@ -97,6 +103,9 @@ class (MonadMask m) => MonadAbstract conn m | m -> conn where
   -- | Creates a migration file
   -- Given a database name and the name of the migration returns the path to the created file
   createMigrationFile :: String -> String -> m String
+
+  -- | Returns the full path of a migration file
+  pathMigrationFile :: MigrationFile -> m String
 
   bracketTunnel :: String -> DbEnvironment -> (conn -> m a) -> m a
   bracketTunnel s env = bracket (openTunnel s env) closeTunnel
@@ -166,14 +175,13 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) IO where
   applyMigration (_, c) migration =
     let name = nameFromMigrationFile migration
         timestamp = (show . tsFromMigrationFile) migration
-        filepath = fullPathFromMigrationFile migration
         insertMigrationStatement = "INSERT INTO migration (ts, name) VALUES (" ++ timestamp ++ ", '" ++ name ++ "'); \n"
-        fileContents = readFile filepath
+        fileContents = pathMigrationFile migration >>= readFile
         statement = (insertMigrationStatement ++) <$> fileContents
      in statement
           >>= \s -> PG.execute_ c (fromString s) >> putStrLn ("Applied SQL:\n" ++ s ++ "\n")
 
-  prepMigrations (_, c) =  do
+  prepMigrations (_, c) = do
     statement <- fromString <$> readFile "../migrations/migration.sql"
     void (PG.execute_ c statement)
 
@@ -183,3 +191,63 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) IO where
           (prefix ++) . (++ "-" ++ name ++ ".sql") . show <$> T.getPOSIXTime
         content = "-- Add your migration here"
      in filepath >>= \p -> writeFile p content >> return p
+
+  pathMigrationFile (MigrationFile s db) = return $ "../migrations/" ++ db ++ "/" ++ s
+
+-- ##### Test implementation
+
+data TestOverrides = Overrides
+  { oOpenTunnel :: Maybe (String -> DbEnvironment -> IO (P.ProcessHandle, PG.Connection)),
+    oCloseTunnel :: Maybe ((P.ProcessHandle, PG.Connection) -> IO ()),
+    migrationDir :: String
+  }
+
+defaultOverrides :: TestOverrides
+defaultOverrides = Overrides Nothing Nothing "../test-migrations"
+
+setOpenTunnel :: (String -> DbEnvironment -> IO (P.ProcessHandle, PG.Connection)) -> TestOverrides
+setOpenTunnel f = defaultOverrides {oOpenTunnel = Just f}
+
+setCloseTunnel :: ((P.ProcessHandle, PG.Connection) -> IO ()) -> TestOverrides
+setCloseTunnel f = defaultOverrides {oCloseTunnel = Just f}
+
+setMigrationDir :: String -> TestOverrides
+setMigrationDir d = defaultOverrides {migrationDir = d}
+
+instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides IO) where
+  listDatabases = lift . listDatabases
+
+  createDatabase c s = lift $ createDatabase c s
+
+  openTunnel s e = do
+    o <- asks oOpenTunnel
+    case o of
+      Just f -> lift $ f s e
+      Nothing -> lift $ openTunnel s e
+
+  closeTunnel c = do
+    o <- asks oCloseTunnel
+    case o of
+      Just f -> lift $ f c
+      Nothing -> lift $ closeTunnel c
+
+  logMessage = lift . logMessage
+
+  deployApplication = lift . deployApplication
+
+  deployDatabase = lift . deployDatabase
+
+  requiredDatabases = lift requiredDatabases
+
+  listMigrationFiles = lift . listMigrationFiles
+
+  lastMigrationTs = lift . lastMigrationTs
+
+  applyMigration c m = lift $ applyMigration c m
+
+  prepMigrations c = lift $ prepMigrations c
+
+  createMigrationFile s n = lift $ createMigrationFile s n
+
+  pathMigrationFile (MigrationFile s db) =
+    asks migrationDir >>= \d -> return $ d ++ "/" ++ db ++ "/" ++ s

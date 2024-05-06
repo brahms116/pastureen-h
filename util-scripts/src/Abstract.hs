@@ -13,10 +13,6 @@ module Abstract
     DbEnvironment (..),
     tsFromMigrationFile,
     nameFromMigrationFile,
-    TestOverrides (..),
-    defaultOverrides,
-    setOpenTunnel,
-    setCloseTunnel,
     Config (..),
     defaultConfig,
     AppM
@@ -223,54 +219,3 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) AppM where
           content = "-- Add your migration here"
        in lift $ filepath >>= \p -> writeFile p content >> return p
 
--- ##### Test implementation
-
-data TestOverrides = Overrides
-  { oOpenTunnel :: !(Maybe (String -> DbEnvironment -> AppM (P.ProcessHandle, PG.Connection))),
-    oCloseTunnel :: !(Maybe ((P.ProcessHandle, PG.Connection) -> AppM ())),
-    migrationDir :: !String
-  }
-
-defaultOverrides :: String -> TestOverrides
-defaultOverrides = Overrides Nothing Nothing
-
-setOpenTunnel :: (String -> DbEnvironment -> AppM (P.ProcessHandle, PG.Connection)) -> TestOverrides -> TestOverrides
-setOpenTunnel f t = t {oOpenTunnel = Just f}
-
-setCloseTunnel :: ((P.ProcessHandle, PG.Connection) -> AppM ()) -> TestOverrides -> TestOverrides
-setCloseTunnel f t = t {oCloseTunnel = Just f}
-
-instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides AppM) where
-  listDatabases = lift . listDatabases
-
-  createDatabase c s = lift $ createDatabase c s
-
-  openTunnel s e = do
-    o <- asks oOpenTunnel
-    case o of
-      Just f -> lift $ f s e
-      Nothing -> lift $ openTunnel s e
-
-  closeTunnel c = do
-    o <- asks oCloseTunnel
-    case o of
-      Just f -> lift $ f c
-      Nothing -> lift $ closeTunnel c
-
-  logMessage = lift . logMessage
-
-  deployApplication = lift . deployApplication
-
-  deployDatabase = lift . deployDatabase
-
-  requiredDatabases = lift requiredDatabases
-
-  listMigrationFiles = lift . listMigrationFiles
-
-  lastMigrationTs = lift . lastMigrationTs
-
-  applyMigration c m = lift $ applyMigration c m
-
-  prepMigrations c = lift $ prepMigrations c
-
-  createMigrationFile s n = lift $ createMigrationFile s n

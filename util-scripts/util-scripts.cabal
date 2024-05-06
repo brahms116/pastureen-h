@@ -50,6 +50,7 @@ test-suite util-scripts-test
   main-is: Spec.hs
   other-modules:
       ServiceSpec
+      Util
       Paths_util_scripts
   hs-source-dirs:
       test

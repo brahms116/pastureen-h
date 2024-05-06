@@ -23,17 +23,15 @@ where
 import qualified Control.Concurrent as C
 import Control.Monad
 import Control.Monad.Catch
+import qualified Data.Time.Clock.POSIX as T
+import qualified Database.PostgreSQL.Simple as PG
+import System.Directory
+import qualified System.Process as P
 -- ##
 
 import Control.Monad.Reader
 import Data.List (sortBy)
 import Data.String
-import qualified Data.Time.Clock.POSIX as T
-import qualified Database.PostgreSQL.Simple as PG
-import System.Directory
-import qualified System.Process as P
-
--- ##
 
 -- | Represents a migration file
 data MigrationFile

@@ -17,6 +17,9 @@ module Abstract
     defaultOverrides,
     setOpenTunnel,
     setCloseTunnel,
+    Config (..),
+    defaultConfig,
+    AppM
   )
 where
 
@@ -128,10 +131,17 @@ data Config = Config
   { cfInfraDirFn :: !(Environment -> String),
     cfKubeNamespaceFn :: !(DbEnvironment -> String),
     cfKubeContextFn :: !(DbEnvironment -> String),
-    cfEnvDbEnvsFn :: !(Environment -> [DbEnvironment]),
     cfMigrationDir :: !String
   }
 
+defaultConfig :: Config
+defaultConfig =
+  Config
+    { cfInfraDirFn = envInfraDir,
+      cfKubeNamespaceFn = dbEnvKubeNamespace,
+      cfKubeContextFn = dbEnvKubeContext,
+      cfMigrationDir = "../migrations"
+    }
 
 type AppM = ReaderT Config IO
 

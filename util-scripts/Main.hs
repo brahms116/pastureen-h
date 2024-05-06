@@ -5,9 +5,9 @@
 
 module Main (main) where
 
-import Service
 import Abstract
 import Control.Monad.Reader
+import Service
 
 main :: IO ()
-main = runReaderT deploymentPipeline Local 
+main = runReaderT (runReaderT deploymentPipeline Local) defaultConfig

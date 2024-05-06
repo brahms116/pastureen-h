@@ -107,9 +107,6 @@ class (MonadMask m) => MonadAbstract conn m | m -> conn where
   -- Given a database name and the name of the migration returns the path to the created file
   createMigrationFile :: String -> String -> m String
 
-  -- | Returns the full path of a migration file
-  pathMigrationFile :: MigrationFile -> m String
-
   bracketTunnel :: String -> DbEnvironment -> (conn -> m a) -> m a
   bracketTunnel s env = bracket (openTunnel s env) closeTunnel
 
@@ -128,14 +125,17 @@ dbEnvKubeContext DbTest = "docker-desktop"
 dbEnvKubeContext DbProduction = "context-czktpqrhmza"
 
 data Config = Config
-  { cfInfraDirFn :: Environment -> String,
-    cfKubeNamespaceFn :: DbEnvironment -> String,
-    cfKubeContextFn :: DbEnvironment -> String,
-    cfEnvDbEnvsFn :: Environment -> [DbEnvironment],
-    cfMigrationDir :: String
+  { cfInfraDirFn :: !(Environment -> String),
+    cfKubeNamespaceFn :: !(DbEnvironment -> String),
+    cfKubeContextFn :: !(DbEnvironment -> String),
+    cfEnvDbEnvsFn :: !(Environment -> [DbEnvironment]),
+    cfMigrationDir :: !String
   }
 
-instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT Config IO) where
+
+type AppM = ReaderT Config IO
+
+instance MonadAbstract (P.ProcessHandle, PG.Connection) AppM where
   logMessage = lift . putStrLn
 
   deployDatabase env =
@@ -213,26 +213,24 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT Config IO) wher
           content = "-- Add your migration here"
        in lift $ filepath >>= \p -> writeFile p content >> return p
 
-  pathMigrationFile (MigrationFile s db) = asks cfMigrationDir >>= \x -> return $ x ++ "/" ++ db ++ "/" ++ s
-
 -- ##### Test implementation
 
 data TestOverrides = Overrides
-  { oOpenTunnel :: Maybe (String -> DbEnvironment -> IO (P.ProcessHandle, PG.Connection)),
-    oCloseTunnel :: Maybe ((P.ProcessHandle, PG.Connection) -> IO ()),
-    migrationDir :: String
+  { oOpenTunnel :: !(Maybe (String -> DbEnvironment -> AppM (P.ProcessHandle, PG.Connection))),
+    oCloseTunnel :: !(Maybe ((P.ProcessHandle, PG.Connection) -> AppM ())),
+    migrationDir :: !String
   }
 
 defaultOverrides :: String -> TestOverrides
 defaultOverrides = Overrides Nothing Nothing
 
-setOpenTunnel :: (String -> DbEnvironment -> IO (P.ProcessHandle, PG.Connection)) -> TestOverrides -> TestOverrides
+setOpenTunnel :: (String -> DbEnvironment -> AppM (P.ProcessHandle, PG.Connection)) -> TestOverrides -> TestOverrides
 setOpenTunnel f t = t {oOpenTunnel = Just f}
 
-setCloseTunnel :: ((P.ProcessHandle, PG.Connection) -> IO ()) -> TestOverrides -> TestOverrides
+setCloseTunnel :: ((P.ProcessHandle, PG.Connection) -> AppM ()) -> TestOverrides -> TestOverrides
 setCloseTunnel f t = t {oCloseTunnel = Just f}
 
-instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides (ReaderT Config IO)) where
+instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides AppM) where
   listDatabases = lift . listDatabases
 
   createDatabase c s = lift $ createDatabase c s
@@ -255,11 +253,7 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides (
 
   deployDatabase = lift . deployDatabase
 
-  requiredDatabases = do
-    dir <- asks migrationDir
-    items <- lift $ listDirectory dir
-    areDirs <- lift $ mapM (doesDirectoryExist . ((dir ++ "/") ++)) items
-    return [d | (d, m) <- zip items areDirs, m]
+  requiredDatabases = lift requiredDatabases
 
   listMigrationFiles = lift . listMigrationFiles
 
@@ -270,6 +264,3 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides (
   prepMigrations c = lift $ prepMigrations c
 
   createMigrationFile s n = lift $ createMigrationFile s n
-
-  pathMigrationFile (MigrationFile s db) =
-    asks migrationDir >>= \d -> return $ d ++ "/" ++ db ++ "/" ++ s

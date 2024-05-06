@@ -52,6 +52,10 @@ tsFromMigrationFile (MigrationFile s _) = read $ takeWhile (/= '-') s
 nameFromMigrationFile :: MigrationFile -> String
 nameFromMigrationFile (MigrationFile s _) = (takeWhile (/= '.') . drop 1 . dropWhile (/= '-')) s
 
+-- | Extracts the database name from a migration file
+dbNameFromMigrationFile :: MigrationFile -> String
+dbNameFromMigrationFile (MigrationFile _ s) = s
+
 instance Eq MigrationFile where
   (==) a b = tsFromMigrationFile a == tsFromMigrationFile b
 
@@ -123,49 +127,64 @@ dbEnvKubeContext DbLocal = "docker-desktop"
 dbEnvKubeContext DbTest = "docker-desktop"
 dbEnvKubeContext DbProduction = "context-czktpqrhmza"
 
-instance MonadAbstract (P.ProcessHandle, PG.Connection) IO where
-  logMessage = putStrLn
+data Config = Config
+  { cfInfraDirFn :: Environment -> String,
+    cfKubeNamespaceFn :: DbEnvironment -> String,
+    cfKubeContextFn :: DbEnvironment -> String,
+    cfEnvDbEnvsFn :: Environment -> [DbEnvironment],
+    cfMigrationDir :: String
+  }
+
+instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT Config IO) where
+  logMessage = lift . putStrLn
 
   deployDatabase env =
-    P.callCommand $
-      "cd " ++ envInfraDir env ++ "/db terraform init && terraform apply -auto-approve"
+    asks cfInfraDirFn >>= \f ->
+      lift $
+        P.callCommand $
+          "cd " ++ f env ++ "/db terraform init && terraform apply -auto-approve"
 
   deployApplication env =
-    P.callCommand $
-      "cd " ++ envInfraDir env ++ "/application terraform init && terraform apply -auto-approve"
+    asks cfInfraDirFn >>= \f ->
+      lift $
+        P.callCommand $
+          "cd " ++ f env ++ "/application terraform init && terraform apply -auto-approve"
 
   listDatabases (_, c) =
-    map PG.fromOnly <$> (PG.query_ c "SELECT datname FROM pg_database" :: IO [PG.Only String])
+    lift $ map PG.fromOnly <$> (PG.query_ c "SELECT datname FROM pg_database" :: IO [PG.Only String])
 
   createDatabase (_, c) name =
     let statement = fromString $ "CREATE DATABASE " ++ name
-     in PG.execute_ c statement >> putStrLn ("Database " ++ name ++ " created")
+     in lift $ PG.execute_ c statement >> putStrLn ("Database " ++ name ++ " created")
 
-  openTunnel dbName env =
-    let kubeContext = dbEnvKubeContext env
-        namespace = dbEnvKubeNamespace env
-     in do
-          P.callCommand $ "kubectl config use-context " ++ kubeContext
-          P.callCommand $ "kubectl config set-context --current --namespace=" ++ namespace
-          ph <- P.spawnCommand "kubectl port-forward svc/database 5432:5432"
-          -- Wait 3 seconds for the port-forward to be ready
-          C.threadDelay 3000000
-          conn <- PG.connectPostgreSQL $ fromString $ "postgresql://postgres@localhost:5432/" ++ dbName
-          return (ph, conn)
+  openTunnel dbName env = do
+    kubeContext <- asks (($ env) . cfKubeContextFn)
+    namespace <- asks (($ env) . cfKubeNamespaceFn)
+    lift $ do
+      P.callCommand $ "kubectl config use-context " ++ kubeContext
+      P.callCommand $ "kubectl config set-context --current --namespace=" ++ namespace
+      ph <- P.spawnCommand "kubectl port-forward svc/database 5432:5432"
+      -- Wait 3 seconds for the port-forward to be ready
+      C.threadDelay 3000000
+      conn <- PG.connectPostgreSQL $ fromString $ "postgresql://postgres@localhost:5432/" ++ dbName
+      return (ph, conn)
 
-  closeTunnel (ph, _) = P.terminateProcess ph
+  closeTunnel (ph, _) = lift $ P.terminateProcess ph
 
-  requiredDatabases = do
-    items <- listDirectory "../migrations"
-    areDirs <- mapM (doesDirectoryExist . ("../migrations/" ++)) items
-    return [d | (d, m) <- zip items areDirs, m]
+  requiredDatabases =
+    asks cfMigrationDir >>= \x -> lift $ do
+      items <- listDirectory x
+      areDirs <- mapM (doesDirectoryExist . ((x ++ "/") ++)) items
+      return [d | (d, m) <- zip items areDirs, m]
 
   listMigrationFiles dbName =
-    sortBy (flip compare) . fmap (`MigrationFile` dbName) <$> listDirectory ("../migrations/" ++ dbName)
+    asks cfMigrationDir >>= \x ->
+      lift $
+        sortBy (flip compare) . fmap (`MigrationFile` dbName) <$> listDirectory (x ++ "/" ++ dbName)
 
   lastMigrationTs (_, c) =
     let statement = "SELECT ts FROM migration ORDER BY ts DESC LIMIT 1"
-     in do
+     in lift $ do
           tss <- fmap PG.fromOnly <$> (PG.query_ c statement :: IO [PG.Only Int])
           case tss of
             [] -> return Nothing
@@ -175,23 +194,26 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) IO where
     let name = nameFromMigrationFile migration
         timestamp = (show . tsFromMigrationFile) migration
         insertMigrationStatement = "INSERT INTO migration (ts, name) VALUES (" ++ timestamp ++ ", '" ++ name ++ "'); \n"
-        fileContents = pathMigrationFile migration >>= readFile
+        fileContents = readFile $ dbNameFromMigrationFile migration
         statement = (insertMigrationStatement ++) <$> fileContents
-     in statement
-          >>= \s -> PG.execute_ c (fromString s) >> putStrLn ("Applied SQL:\n" ++ s ++ "\n")
+     in lift $
+          statement
+            >>= \s -> PG.execute_ c (fromString s) >> putStrLn ("Applied SQL:\n" ++ s ++ "\n")
 
-  prepMigrations (_, c) = do
-    statement <- fromString <$> readFile "../migrations/migration.sql"
-    void (PG.execute_ c statement)
+  prepMigrations (_, c) =
+    asks cfMigrationDir >>= \x -> lift $ do
+      statement <- fromString <$> readFile (x ++ "/migration.sql")
+      void (PG.execute_ c statement)
 
   createMigrationFile dbName name =
-    let prefix = "../migrations/" ++ dbName ++ "/"
-        filepath =
-          (prefix ++) . (++ "-" ++ name ++ ".sql") . show <$> T.getPOSIXTime
-        content = "-- Add your migration here"
-     in filepath >>= \p -> writeFile p content >> return p
+    asks cfMigrationDir >>= \x ->
+      let prefix = x ++ "/" ++ dbName ++ "/"
+          filepath =
+            (prefix ++) . (++ "-" ++ name ++ ".sql") . show <$> T.getPOSIXTime
+          content = "-- Add your migration here"
+       in lift $ filepath >>= \p -> writeFile p content >> return p
 
-  pathMigrationFile (MigrationFile s db) = return $ "../migrations/" ++ db ++ "/" ++ s
+  pathMigrationFile (MigrationFile s db) = asks cfMigrationDir >>= \x -> return $ x ++ "/" ++ db ++ "/" ++ s
 
 -- ##### Test implementation
 
@@ -210,7 +232,7 @@ setOpenTunnel f t = t {oOpenTunnel = Just f}
 setCloseTunnel :: ((P.ProcessHandle, PG.Connection) -> IO ()) -> TestOverrides -> TestOverrides
 setCloseTunnel f t = t {oCloseTunnel = Just f}
 
-instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides IO) where
+instance MonadAbstract (P.ProcessHandle, PG.Connection) (ReaderT TestOverrides (ReaderT Config IO)) where
   listDatabases = lift . listDatabases
 
   createDatabase c s = lift $ createDatabase c s

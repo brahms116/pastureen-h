@@ -1,8 +1,5 @@
 locals {
-  namespace     = "pastureen"
-  hostnode      = "docker-desktop"
-  storage_class = var.environment == "LOCAL" ? "hostpath" : "longhorn"
-  mount_path    = var.environment == "LOCAL" ? "/Users/david/pg-data" : "/pg-data"
+  namespace = "pastureen"
 }
 
 resource "kubernetes_namespace" "main" {
@@ -45,41 +42,48 @@ resource "kubernetes_persistent_volume" "data" {
       storage = "20Gi"
     }
     persistent_volume_reclaim_policy = "Retain"
-    storage_class_name               = local.storage_class
+    storage_class_name               = "hostpath"
 
     persistent_volume_source {
       dynamic "host_path" {
-        for_each = var.environment == "LOCAL" ? [local.mount_path] : []
+        for_each = var.environment == "LOCAL" ? [true] : []
         content {
-          path = local.mount_path
+          path = "/Users/david/pg-data"
         }
       }
 
-      dynamic "local" {
-        for_each = var.environment == "REMOTE" ? [local.mount_path] : []
-        content {
-          path = local.mount_path
-        }
-      }
-    }
-
-    dynamic "node_affinity" {
-      for_each = var.environment == "LOCAL" ? [local.hostnode] : []
-      content {
-        required {
-          node_selector_term {
-            match_expressions {
-              key      = "kubernetes.io/hostname"
-              operator = "In"
-              values   = [local.hostnode]
-            }
-          }
-        }
-      }
     }
   }
 }
 
+resource "kubernetes_persistent_volume" "test-data" {
+  count = var.environment == "LOCAL" ? 1 : 0
+  metadata {
+    name = "test-data"
+    labels = {
+      pv_name = "test-data"
+    }
+  }
+
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    capacity = {
+      storage = "20Gi"
+    }
+    persistent_volume_reclaim_policy = "Retain"
+    storage_class_name               = "hostpath"
+
+    persistent_volume_source {
+      dynamic "host_path" {
+        for_each = var.environment == "LOCAL" ? [true] : []
+        content {
+          path = "/Users/david/pg-test-data"
+        }
+      }
+
+    }
+  }
+}
 resource "kubernetes_persistent_volume_claim" "data" {
   metadata {
     name      = "data"
@@ -96,7 +100,31 @@ resource "kubernetes_persistent_volume_claim" "data" {
       }
     }
 
-    storage_class_name = var.environment == "LOCAL" ? null : local.storage_class
+    storage_class_name = var.environment == "LOCAL" ? null : "longhorn"
+
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "8Gi"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "test-data" {
+  count = var.environment == "LOCAL" ? 1 : 0
+
+  metadata {
+    name      = "test-data"
+    namespace = local.namespace
+  }
+
+  spec {
+    selector {
+      match_labels = {
+        pv_name = "test-data"
+      }
+    }
 
     access_modes = ["ReadWriteOnce"]
     resources {
@@ -168,6 +196,75 @@ resource "kubernetes_deployment" "database" {
           name = "data"
           persistent_volume_claim {
             claim_name = kubernetes_persistent_volume_claim.data.metadata.0.name
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_deployment" "test-database" {
+  count = var.environment == "LOCAL" ? 1 : 0
+  metadata {
+    name      = "test-database"
+    namespace = local.namespace
+    labels = {
+      app = "test-database"
+    }
+  }
+
+  spec {
+    replicas = 1
+    strategy {
+      type = "Recreate"
+    }
+
+    selector {
+      match_labels = {
+        app = "test-database"
+      }
+    }
+
+    template {
+      metadata {
+        name      = "test-database"
+        namespace = local.namespace
+        labels = {
+          app = "test-database"
+        }
+      }
+
+      spec {
+        container {
+          name  = "test-database"
+          image = "postgres:13"
+          env {
+            name  = "POSTGRES_PASSWORD"
+            value = "my_password"
+          }
+
+          dynamic "env" {
+            for_each = var.environment == "LOCAL" ? [] : [true]
+            content {
+              name  = "PGDATA"
+              value = "/var/lib/postgresql/data/pgdata"
+            }
+          }
+
+          port {
+            container_port = 5432
+          }
+
+          volume_mount {
+            name       = "data"
+            mount_path = "/var/lib/postgresql/data"
+          }
+        }
+
+        volume {
+          name = "data"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.test-data[0].metadata.0.name
           }
         }
       }

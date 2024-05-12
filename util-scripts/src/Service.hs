@@ -4,9 +4,7 @@ import Abstract
 import Control.Monad.Reader
 
 envDbEnvs :: Environment -> [DbEnvironment]
--- Include the test database when its ready
--- envDbEnvs Local = [DbLocal, DbTest]
-envDbEnvs Local = [DbLocal]
+envDbEnvs Local = [DbLocal, DbTest]
 envDbEnvs Production = [DbProduction]
 
 -- | Determines the list of databases to create given the existing and required databases names.

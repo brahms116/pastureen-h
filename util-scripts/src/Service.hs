@@ -53,6 +53,8 @@ migrateDb' migrations c = do
   lastTs <- prepMigrations c >> lastMigrationTs c
   mapM_ (applyMigration c) $ filterMigrations migrations lastTs
   where
+    -- | Filters the migrations that are greater than the last migration timestamp
+    filterMigrations :: [MigrationFile] -> Maybe Int -> [MigrationFile]
     filterMigrations ms (Just ts) = takeWhile (\x -> tsFromMigrationFile x > ts) ms
     filterMigrations ms Nothing = ms
 
@@ -65,11 +67,11 @@ migrateDbs = do
 
 -- | Wraps deployDatbase it in ReaderT
 deployDatabase' :: (MonadAbstract conn m) => ReaderT Environment m ()
-deployDatabase' = ask >>= \x -> lift $ deployDatabase x
+deployDatabase' = ask >>= lift . deployDatabase
 
 -- | Wraps deployApplication in ReaderT
 deployApplication' :: (MonadAbstract conn m) => ReaderT Environment m ()
-deployApplication' = ask >>= \x -> lift $ deployApplication x
+deployApplication' = ask >>= lift . deployApplication
 
 deploymentPipeline :: (MonadAbstract conn m) => ReaderT Environment m ()
 deploymentPipeline = deployDatabase' >> fillMissingDbs >> migrateDbs >> deployApplication'

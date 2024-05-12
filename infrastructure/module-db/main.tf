@@ -27,6 +27,26 @@ resource "kubernetes_service" "database" {
   }
 }
 
+resource "kubernetes_service" "test-database" {
+  count = var.environment == "LOCAL" ? 1 : 0
+  metadata {
+    name      = "test-database"
+    namespace = local.namespace
+  }
+
+  spec {
+    selector = {
+      app = "test-database"
+    }
+
+    port {
+      protocol    = "TCP"
+      port        = 5432
+      target_port = 5432
+    }
+  }
+}
+
 resource "kubernetes_persistent_volume" "data" {
   count = var.environment == "LOCAL" ? 1 : 0
   metadata {

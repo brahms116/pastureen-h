@@ -2,6 +2,7 @@ module Service (deploymentPipeline, fillMissingDbs) where
 
 import Abstract
 import Control.Monad.Reader
+import Debug.Trace
 
 envDbEnvs :: Environment -> [DbEnvironment]
 envDbEnvs Local = [DbLocal, DbTest]
@@ -42,6 +43,7 @@ fillMissingDbs =
 migrateDb :: (MonadAbstract conn m) => String -> DbEnvironment -> m ()
 migrateDb dbName dbEnv = do
   files <- listMigrationFiles dbName
+  traceShowM dbName
   bracketTunnel dbName dbEnv $ migrateDb' files
 
 -- | Migrates a database given a list of migration files and a connection
@@ -49,6 +51,7 @@ migrateDb dbName dbEnv = do
 migrateDb' :: (MonadAbstract conn m) => [MigrationFile] -> conn -> m ()
 migrateDb' migrations c = do
   lastTs <- prepMigrations c >> lastMigrationTs c
+  traceShowM lastTs
   mapM_ (applyMigration c) $ filterMigrations migrations lastTs
   where
     -- | Filters the migrations that are greater than the last migration timestamp

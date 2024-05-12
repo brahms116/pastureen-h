@@ -15,7 +15,7 @@ module Abstract
     nameFromMigrationFile,
     Config (..),
     defaultConfig,
-    AppM
+    AppM,
   )
 where
 
@@ -23,15 +23,16 @@ where
 import qualified Control.Concurrent as C
 import Control.Monad
 import Control.Monad.Catch
-import qualified Data.Time.Clock.POSIX as T
-import qualified Database.PostgreSQL.Simple as PG
-import System.Directory
-import qualified System.Process as P
 -- ##
 
 import Control.Monad.Reader
 import Data.List (sortBy)
 import Data.String
+import qualified Data.Time.Clock.POSIX as T
+import qualified Database.PostgreSQL.Simple as PG
+import Debug.Trace
+import System.Directory
+import qualified System.Process as P
 
 -- | Represents a migration file
 data MigrationFile
@@ -52,6 +53,10 @@ nameFromMigrationFile (MigrationFile s _) = (takeWhile (/= '.') . drop 1 . dropW
 -- | Extracts the database name from a migration file
 dbNameFromMigrationFile :: MigrationFile -> String
 dbNameFromMigrationFile (MigrationFile _ s) = s
+
+-- | Returns the path to a migration file given a migration file and the migration dir
+pathFromMigrationFile :: MigrationFile -> String -> String
+pathFromMigrationFile (MigrationFile s db) migrationDir = migrationDir ++ "/" ++ db ++ "/" ++ s
 
 instance Eq MigrationFile where
   (==) a b = tsFromMigrationFile a == tsFromMigrationFile b
@@ -121,11 +126,16 @@ dbEnvKubeContext DbLocal = "docker-desktop"
 dbEnvKubeContext DbTest = "docker-desktop"
 dbEnvKubeContext DbProduction = "context-czktpqrhmza"
 
+dbEnvKubeService :: DbEnvironment -> String
+dbEnvKubeService DbTest = "test-database"
+dbEnvKubeService _ = "database"
+
 data Config = Config
   { cfInfraDirFn :: !(Environment -> String),
     cfKubeNamespaceFn :: !(DbEnvironment -> String),
     cfKubeContextFn :: !(DbEnvironment -> String),
-    cfMigrationDir :: !String
+    cfMigrationDir :: !String,
+    cfDbEnvKubeServiceFn :: !(DbEnvironment -> String)
   }
 
 defaultConfig :: Config
@@ -134,6 +144,7 @@ defaultConfig =
     { cfInfraDirFn = envInfraDir,
       cfKubeNamespaceFn = dbEnvKubeNamespace,
       cfKubeContextFn = dbEnvKubeContext,
+      cfDbEnvKubeServiceFn = dbEnvKubeService,
       cfMigrationDir = "../migrations"
     }
 
@@ -164,10 +175,11 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) AppM where
   openTunnel dbName env = do
     kubeContext <- asks (($ env) . cfKubeContextFn)
     namespace <- asks (($ env) . cfKubeNamespaceFn)
+    service <- asks (($ env) . cfDbEnvKubeServiceFn)
     lift $ do
       P.callCommand $ "kubectl config use-context " ++ kubeContext
       P.callCommand $ "kubectl config set-context --current --namespace=" ++ namespace
-      ph <- P.spawnCommand "kubectl port-forward svc/database 5432:5432"
+      ph <- P.spawnCommand $ "kubectl port-forward svc/" ++ service ++ " 5432:5432"
       -- Wait 3 seconds for the port-forward to be ready
       C.threadDelay 3000000
       conn <- PG.connectPostgreSQL $ fromString $ "postgresql://postgres@localhost:5432/" ++ dbName
@@ -198,11 +210,10 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) AppM where
     let name = nameFromMigrationFile migration
         timestamp = (show . tsFromMigrationFile) migration
         insertMigrationStatement = "INSERT INTO migration (ts, name) VALUES (" ++ timestamp ++ ", '" ++ name ++ "'); \n"
-        fileContents = readFile $ dbNameFromMigrationFile migration
+        fileContents = asks cfMigrationDir >>= \dir -> lift $ readFile $ pathFromMigrationFile migration dir
         statement = (insertMigrationStatement ++) <$> fileContents
-     in lift $
-          statement
-            >>= \s -> PG.execute_ c (fromString s) >> putStrLn ("Applied SQL:\n" ++ s ++ "\n")
+     in statement
+          >>= \s -> lift $ PG.execute_ c (fromString s) >> putStrLn ("Applied SQL:\n" ++ s ++ "\n")
 
   prepMigrations (_, c) =
     asks cfMigrationDir >>= \x -> lift $ do
@@ -216,4 +227,3 @@ instance MonadAbstract (P.ProcessHandle, PG.Connection) AppM where
             (prefix ++) . (++ "-" ++ name ++ ".sql") . show <$> T.getPOSIXTime
           content = "-- Add your migration here"
        in lift $ filepath >>= \p -> writeFile p content >> return p
-

@@ -2,7 +2,6 @@ module Service (deploymentPipeline, fillMissingDbs) where
 
 import Abstract
 import Control.Monad.Reader
-import Debug.Trace
 
 envDbEnvs :: Environment -> [DbEnvironment]
 envDbEnvs Local = [DbLocal, DbTest]
@@ -10,7 +9,7 @@ envDbEnvs Production = [DbProduction]
 
 -- | Determines the list of databases to create given the existing and required databases names.
 -- Returns the list of databases names to create and a respective log message
-dbsToCreate :: [String] -> [String] -> ([String], String)
+dbsToCreate :: [DatabaseName] -> [DatabaseName] -> ([DatabaseName], String)
 dbsToCreate existing required =
   (missing, msg)
   where
@@ -40,23 +39,21 @@ fillMissingDbs =
         lift $ mapM_ (\x -> bracketTunnel "postgres" x fill_) dbEnvs
 
 -- | Migrates a database given a database name and the dbEnvrionment its in
-migrateDb :: (MonadAbstract conn m) => String -> DbEnvironment -> m ()
-migrateDb dbName dbEnv = do
-  files <- listMigrationFiles dbName
-  traceShowM dbName
-  bracketTunnel dbName dbEnv $ migrateDb' files
+migrateDb :: (MonadAbstract conn m) => DatabaseName -> DbEnvironment -> m ()
+migrateDb n e = do
+  files <- listMigrationFiles n
+  bracketTunnel n e $ migrateDb' files
 
 -- | Migrates a database given a list of migration files and a connection
 -- helper function for migrateDb
-migrateDb' :: (MonadAbstract conn m) => [MigrationFile] -> conn -> m ()
-migrateDb' migrations c = do
+migrateDb' :: (MonadAbstract conn m) => [MigrationFileRef] -> conn -> m ()
+migrateDb' mrfs c = do
   lastTs <- prepMigrations c >> lastMigrationTs c
-  traceShowM lastTs
-  mapM_ (applyMigration c) $ filterMigrations migrations lastTs
+  mapM_ (applyMigration c) $ filterMigrations mrfs lastTs
   where
     -- | Filters the migrations that are greater than the last migration timestamp
-    filterMigrations :: [MigrationFile] -> Maybe Int -> [MigrationFile]
-    filterMigrations ms (Just ts) = takeWhile (\x -> tsFromMigrationFile x > ts) ms
+    filterMigrations :: [MigrationFileRef] -> Maybe Int -> [MigrationFileRef]
+    filterMigrations ms (Just ts) = takeWhile (\x -> mfrTimestamp x > ts) ms
     filterMigrations ms Nothing = ms
 
 -- | Migrates all the required databases

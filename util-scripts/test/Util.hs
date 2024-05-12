@@ -59,7 +59,7 @@ getConn s = PG.connectPostgreSQL $ fromString $ "postgres://postgres:postgres@lo
 fakeCloseTunnel :: (P.ProcessHandle, PG.Connection) -> AppM ()
 fakeCloseTunnel _ = lift $ putStrLn "Closing"
 
--- | Returns a TestOverrides given a migration directory fit for database testing
+-- | Returns a TestOverrides given a migration directory, fit for database testing
 dbTestOverrides :: String -> TestOverrides
 dbTestOverrides dir =
   Overrides

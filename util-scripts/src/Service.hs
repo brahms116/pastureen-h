@@ -2,7 +2,6 @@ module Service (deploymentPipeline, fillMissingDbs) where
 
 import Abstract
 import Control.Monad.Reader
-import Debug.Trace
 
 envDbEnvs :: Environment -> [DbEnvironment]
 -- Include the test database when its ready
@@ -34,7 +33,6 @@ fillMissingDbs :: (MonadAbstract conn m) => ReaderT Environment m ()
 fillMissingDbs =
   let fill_ c = do
         dbs <- listDatabases c
-        traceM $ "Databases: " ++ show dbs
         required <- requiredDatabases
         let (dbs', report) = dbsToCreate dbs required
         logMessage report

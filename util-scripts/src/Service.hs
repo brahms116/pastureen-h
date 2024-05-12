@@ -76,7 +76,7 @@ deploymentPipeline = deployDatabase' >> fillMissingDbs >> migrateDbs >> deployAp
 
 -- ### COMMANDS
 
-data Command = Deploy !Environment | CreateMigration !String | Plan !Environment
+data Command = Deploy !Environment | CreateMigration !MigrationName | Plan !Environment
 
 parseCommand :: [String] -> Either String Command
 parseCommand ["--help"] = undefined

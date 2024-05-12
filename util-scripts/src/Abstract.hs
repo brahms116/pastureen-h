@@ -17,6 +17,7 @@ module Abstract
     Config (..),
     defaultConfig,
     AppM,
+    AppDbConnection,
     DatabaseName,
     MigrationName,
     MigrationDir,

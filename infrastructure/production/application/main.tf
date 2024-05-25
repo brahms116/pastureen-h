@@ -9,12 +9,13 @@ terraform {
 provider "helm" {
   kubernetes {
     config_path = "~/.kube/config"
-    config_context = "context-czktpqrhmza"
+    config_context = "oracle-context"
   }
 }
 
 provider "kubernetes" {
   config_path = "~/.kube/config"
+  config_context = "oracle-context"
 }
 
 module "application_deployment" {

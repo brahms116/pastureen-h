@@ -5,6 +5,12 @@ locals {
     "PRODUCTION" = "pastureen"
   }
 
+  storage_class = {
+    "LOCAL"      = "hostpath",
+    "TEST"       = "hostpath",
+    "PRODUCTION" = "microk8s-hostpath"
+  }
+
   hostpath = {
     "LOCAL"      = "/Users/david/pg-data",
     "TEST"       = "/Users/david/pg-test-data",
@@ -51,7 +57,7 @@ resource "kubernetes_persistent_volume" "data" {
       storage = "20Gi"
     }
     persistent_volume_reclaim_policy = "Retain"
-    storage_class_name               = "hostpath"
+    storage_class_name               = local.storage_class[var.environment]
 
     persistent_volume_source {
       host_path {
@@ -68,9 +74,13 @@ resource "kubernetes_persistent_volume_claim" "data" {
   }
 
   spec {
-    selector {
-      match_labels = {
-        pv_name = "${local.namespace[var.environment]}-data"
+
+    dynamic "selector" {
+      for_each = var.environment == "PRODUCTION" ? [] : [1]
+      content {
+        match_labels = {
+          pv_name = "${local.namespace[var.environment]}-data"
+        }
       }
     }
 
@@ -135,7 +145,7 @@ resource "kubernetes_deployment" "database" {
         volume {
           name = "data"
           persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.data.metadata.0.name
+            claim_name = "data"
           }
         }
       }

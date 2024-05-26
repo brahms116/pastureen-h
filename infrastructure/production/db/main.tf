@@ -8,7 +8,7 @@ terraform {
 
 provider "kubernetes" {
   config_path = "~/.kube/config"
-  config_context = "context-czktpqrhmza"
+  config_context = "oracle-context"
 }
 
 module "db_deployment" {

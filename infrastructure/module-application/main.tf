@@ -29,7 +29,7 @@ resource "helm_release" "traefik_proxy" {
   }
 
   set {
-    name = "ingressClass.isDefaultClass"
+    name  = "ingressClass.isDefaultClass"
     value = "false"
   }
 
@@ -41,7 +41,7 @@ resource "helm_release" "traefik_proxy" {
   dynamic "set" {
     for_each = var.environment == "TEST" ? [
       {
-        name = "ports.web.exposedPort"
+        name  = "ports.web.exposedPort"
         value = "3000"
       }
     ] : []
@@ -54,10 +54,6 @@ resource "helm_release" "traefik_proxy" {
 
   dynamic "set" {
     for_each = var.environment == "PRODUCTION" ? [
-      {
-        name  = "ports.web.redirectTo.port"
-        value = "websecure"
-      },
       {
         name  = "ports.websecure.tls.certResolver"
         value = "letsencrypt"
@@ -78,10 +74,6 @@ resource "helm_release" "traefik_proxy" {
         name  = "certResolvers.letsencrypt.storage"
         value = "/data/acme.json"
       },
-      {
-        name  = "service.spec.loadBalancerIP"
-        value = "192.9.182.251"
-      }
     ] : []
 
     content {
@@ -164,7 +156,7 @@ resource "kubernetes_deployment" "noco" {
 
           env {
             name  = "NC_DB"
-            value = "pg://database.pastureen:5432?u=postgres&p=my_password&d=nocodb"
+            value = "pg://database.${local.namespace[var.environment]}:5432?u=postgres&p=my_password&d=nocodb"
           }
         }
       }

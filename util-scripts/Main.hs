@@ -1,9 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-
 module Main (main) where
 
+import Pipeline
+
 main :: IO ()
-main = putStrLn "WIP"
+main = runPipelineReal Test

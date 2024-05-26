@@ -2,7 +2,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 
-module Pipeline () where
+module Pipeline (Env (..), runPipelineReal) where
 
 import Control.Concurrent as C
 import Control.Exception
@@ -43,7 +43,7 @@ mfrPath
       }
     )
   migrationDir =
-    migrationDir ++ "/" ++ db ++ "/" ++ n ++ "-" ++ show ts ++ ".sql"
+    migrationDir ++ "/" ++ db ++ "/" ++ show ts ++ "-" ++ n ++ ".sql"
 
 -- | Returns a migration file reference given a db name and a file name
 mfrFromFileName :: DbName -> FilePath -> MigrationFileRef
@@ -92,8 +92,7 @@ envRunDbActionFnReal env db action =
         conn <- PG.connectPostgreSQL $ fromString $ "postgresql://postgres@localhost:5432/" ++ db
         return (ph, conn)
       close :: (P.ProcessHandle, DbConnection) -> IO ()
-      close (ph, conn) = do
-        PG.close conn
+      close (ph, _) = do
         P.terminateProcess ph
    in bracket open close $ \(_, conn) -> action conn
 

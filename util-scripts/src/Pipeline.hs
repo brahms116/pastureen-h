@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 
 module Pipeline () where
@@ -80,7 +81,7 @@ setKubeContext env = do
   P.callCommand $ "kubectl config use-context " ++ envKubeContext env
   P.callCommand $ "kubectl config set-context --current --namespace=" ++ envKubeNamspace env
 
-envRunDbActionFnReal :: Env -> RunDbActionFn a
+envRunDbActionFnReal :: Env -> RunDbActionFn
 envRunDbActionFnReal env db action =
   let open :: IO (P.ProcessHandle, DbConnection)
       open = do
@@ -167,7 +168,7 @@ deployDb d = deployTerraform $ d ++ dbInfraDir
 deployApplication :: InfraProjectDir -> IO ()
 deployApplication d = deployTerraform $ d ++ applicationInfraDir
 
-type RunDbActionFn a = DbName -> (DbConnection -> IO a) -> IO a
+type RunDbActionFn = forall a. DbName -> (DbConnection -> IO a) -> IO a
 
 -- | Determines the list of databases to create given the existing and required databases names.
 -- Returns the list of databases names to create and a respective log message
@@ -188,20 +189,45 @@ dbsToCreate existing required =
           : fmtDotpoint required
           ++ msgForCreate
 
-fillMissingDbs :: RunDbActionFn () -> MigrationDir -> IO ()
-fillMissingDbs fn =
+fillMissingDbs :: RunDbActionFn -> MigrationDir -> IO ()
+fillMissingDbs fn dir =
   let fill_ c = do
-        required <- requiredDatabases migrationDirReal
+        required <- requiredDatabases dir
         existing <- listDatabases c
         let (dbs, msg) = dbsToCreate existing required
+        putStrLn msg
         mapM_ (createDatabase c) dbs
    in fn "postgres" fill_
-        
 
-migrateDbs :: RunDbActionFn a -> MigrationDir -> IO ()
-migrateDbs = undefined
+lastMigrationTs :: DbConnection -> IO (Maybe Int)
+lastMigrationTs c =
+  let statement = "SELECT ts FROM migration ORDER BY ts DESC LIMIT 1"
+   in do
+        tss <- fmap PG.fromOnly <$> (PG.query_ c statement :: IO [PG.Only Int])
+        case tss of
+          [] -> return Nothing
+          ts : _ -> return $ Just ts
 
-runPipeline' :: RunDbActionFn a -> MigrationDir -> InfraProjectDir -> IO ()
+migrateDb :: RunDbActionFn -> MigrationDir -> DbName -> IO ()
+migrateDb fn mDir dbName =
+  let migrate :: DbConnection -> IO ()
+      migrate c = do
+        mfrs <- listMigrationFiles mDir dbName
+        lastTs <- prepMigrationTable c >> lastMigrationTs c
+        mapM_ (\x -> runMigration c x mDir >>= putStrLn) $ filterMigrations mfrs lastTs
+        where
+          -- \| Filters the migrations that are greater than the last migration timestamp
+          filterMigrations :: [MigrationFileRef] -> Maybe Int -> [MigrationFileRef]
+          filterMigrations ms (Just ts) = takeWhile (\x -> mfrTimestamp x > ts) ms
+          filterMigrations ms Nothing = ms
+   in fn dbName migrate
+
+migrateDbs :: RunDbActionFn -> MigrationDir -> IO ()
+migrateDbs fn mDir = do
+  dbs <- requiredDatabases mDir
+  mapM_ (migrateDb fn mDir) dbs
+
+runPipeline' :: RunDbActionFn -> MigrationDir -> InfraProjectDir -> IO ()
 runPipeline' fn md ifd =
   deployDb ifd
     >> fillMissingDbs fn md

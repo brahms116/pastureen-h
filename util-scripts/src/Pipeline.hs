@@ -5,10 +5,11 @@ module Pipeline () where
 
 import Control.Concurrent as C
 import Control.Exception
+import Control.Monad
 import Data.List (sortBy)
 import Data.String
+import qualified Data.Time.Clock.POSIX as T
 import qualified Database.PostgreSQL.Simple as PG
-import Control.Monad
 import System.Directory
 import qualified System.Process as P
 
@@ -134,14 +135,29 @@ prepMigrationTable c = do
   statement <- fromString <$> readFile pathToMigrationTableSql
   void (PG.execute_ c statement)
 
+-- | Given a connection and database name, creates the database
+createDatabase :: DbConnection -> DbName -> IO ()
+createDatabase c name =
+  let statement = fromString $ "CREATE DATABASE " ++ name
+   in PG.execute_ c statement >> putStrLn ("Database " ++ name ++ " created")
+
 -- | Given the migration directory, returns the list of databases which are required
 requiredDatabases :: MigrationDir -> IO [DbName]
-requiredDatabases = undefined
+requiredDatabases dir = do
+  -- What is this lol, should just use filterM
+  items <- listDirectory dir
+  areDirs <- mapM (doesDirectoryExist . ((dir ++ "/") ++)) items
+  return [d | (d, m) <- zip items areDirs, m]
 
 -- | Given the migration directory, the migration name, the database name, creates a migration file
 -- and returns the path to the file
-createMigrationFile :: MigrationDir -> MigrationName -> DbName -> MigrationDir -> IO FilePath
-createMigrationFile = undefined
+createMigrationFile :: MigrationDir -> MigrationName -> DbName -> IO FilePath
+createMigrationFile dir name dbname =
+  let prefix = dir ++ "/" ++ dbname ++ "/"
+      filepath =
+        (prefix ++) . (++ "-" ++ name ++ ".sql") . show <$> T.getPOSIXTime
+      content = "-- Add your migration here"
+   in filepath >>= \p -> writeFile p content >> return p
 
 -- | Given the infra project directory, deploys the database infra project
 deployDb :: InfraProjectDir -> IO ()
@@ -172,8 +188,15 @@ dbsToCreate existing required =
           : fmtDotpoint required
           ++ msgForCreate
 
-fillMissingDbs :: RunDbActionFn a -> IO ()
-fillMissingDbs = undefined
+fillMissingDbs :: RunDbActionFn () -> MigrationDir -> IO ()
+fillMissingDbs fn =
+  let fill_ c = do
+        required <- requiredDatabases migrationDirReal
+        existing <- listDatabases c
+        let (dbs, msg) = dbsToCreate existing required
+        mapM_ (createDatabase c) dbs
+   in fn "postgres" fill_
+        
 
 migrateDbs :: RunDbActionFn a -> MigrationDir -> IO ()
 migrateDbs = undefined
@@ -181,7 +204,7 @@ migrateDbs = undefined
 runPipeline' :: RunDbActionFn a -> MigrationDir -> InfraProjectDir -> IO ()
 runPipeline' fn md ifd =
   deployDb ifd
-    >> fillMissingDbs fn
+    >> fillMissingDbs fn md
     >> migrateDbs fn md
     >> deployApplication ifd
 

@@ -39,9 +39,9 @@ resource "kubernetes_service" "database" {
 
 resource "kubernetes_persistent_volume" "data" {
   metadata {
-    name = "data"
+    name = "${local.namespace[var.environment]}-data"
     labels = {
-      pv_name = "data"
+      pv_name = "${local.namespace[var.environment]}-data"
     }
   }
 
@@ -70,7 +70,7 @@ resource "kubernetes_persistent_volume_claim" "data" {
   spec {
     selector {
       match_labels = {
-        pv_name = "data"
+        pv_name = "${local.namespace[var.environment]}-data"
       }
     }
 

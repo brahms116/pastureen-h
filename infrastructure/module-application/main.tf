@@ -10,6 +10,12 @@ locals {
     "TEST"       = "noco.me.davidkwong.net",
     "PRODUCTION" = "noco.davidkwong.net"
   }
+
+  ingress_classname = {
+    "LOCAL"      = "traefik-local",
+    "TEST"       = "traefik-test",
+    "PRODUCTION" = "traefik"
+  }
 }
 
 resource "helm_release" "traefik_proxy" {
@@ -22,11 +28,21 @@ resource "helm_release" "traefik_proxy" {
     value = var.environment == "PRODUCTION" ? "true" : "false"
   }
 
+  set {
+    name = "ingressClass.isDefaultClass"
+    value = "false"
+  }
+
+  set {
+    name  = "ingressClass.name"
+    value = local.ingress_classname[var.environment]
+  }
+
   dynamic "set" {
     for_each = var.environment == "TEST" ? [
       {
-        # hopefully this works
-        name = "ports.web.exposedPort:3000"
+        name = "ports.web.exposedPort"
+        value = "3000"
       }
     ] : []
 
@@ -82,6 +98,7 @@ resource "kubernetes_ingress_v1" "noco" {
   }
 
   spec {
+    ingress_class_name = local.ingress_classname[var.environment]
     rule {
       host = local.noco_host[var.environment]
       http {

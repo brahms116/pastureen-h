@@ -74,6 +74,20 @@ resource "helm_release" "traefik_proxy" {
         name  = "certResolvers.letsencrypt.storage"
         value = "/data/acme.json"
       },
+      # We run a single node microk8, so we set the service to nodeport and expose the ports
+      # directly. I've also hacked the service node port range to allow for this
+      {
+        name = "service.type"
+        value = "NodePort"
+      },
+      {
+        name="ports.web.nodePort"
+        value="80"
+      },
+      {
+        name="ports.websecure.nodePort"
+        value="443"
+      }
     ] : []
 
     content {

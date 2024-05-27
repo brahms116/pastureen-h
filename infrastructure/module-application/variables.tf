@@ -1,4 +1,4 @@
 variable "environment" {
-  description = "LOCAL or REMOTE"
+  description = "LOCAL, TEST or PRODUCTION"
   type        = string
 }

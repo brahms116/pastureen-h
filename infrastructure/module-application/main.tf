@@ -1,23 +1,59 @@
 locals {
-  namespace = "pastureen"
+  namespace = {
+    "LOCAL"      = "pastureen",
+    "TEST"       = "pastureen-test",
+    "PRODUCTION" = "pastureen"
+  }
+
+  noco_host = {
+    "LOCAL"      = "noco.me.davidkwong.net",
+    "TEST"       = "noco.me.davidkwong.net",
+    "PRODUCTION" = "noco.davidkwong.net"
+  }
+
+  ingress_classname = {
+    "LOCAL"      = "traefik-local",
+    "TEST"       = "traefik-test",
+    "PRODUCTION" = "traefik"
+  }
 }
 
 resource "helm_release" "traefik_proxy" {
-  namespace  = local.namespace
+  namespace  = local.namespace[var.environment]
   name       = "traefik"
   repository = "https://traefik.github.io/charts"
   chart      = "traefik"
   set {
     name  = "ports.websecure.expose.default"
-    value = var.environment == "LOCAL" ? "false" : "true"
+    value = var.environment == "PRODUCTION" ? "true" : "false"
+  }
+
+  set {
+    name  = "ingressClass.isDefaultClass"
+    value = "false"
+  }
+
+  set {
+    name  = "ingressClass.name"
+    value = local.ingress_classname[var.environment]
   }
 
   dynamic "set" {
-    for_each = var.environment == "LOCAL" ? [] : [
+    for_each = var.environment == "TEST" ? [
       {
-        name = "ports.web.redirectTo.port"
-        value = "websecure"
-      },
+        name  = "ports.web.exposedPort"
+        value = "3000"
+      }
+    ] : []
+
+    content {
+      name  = set.value.name
+      value = set.value.value
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.environment == "PRODUCTION" ? [
       {
         name  = "ports.websecure.tls.certResolver"
         value = "letsencrypt"
@@ -27,22 +63,32 @@ resource "helm_release" "traefik_proxy" {
         value = "null"
       },
       {
-        name = "certResolvers.letsencrypt.email"
+        name  = "certResolvers.letsencrypt.email"
         value = "davidkwong17@gmail.com"
       },
       {
-        name = "certResolvers.letsencrypt.httpChallenge.entryPoint"
+        name  = "certResolvers.letsencrypt.httpChallenge.entryPoint"
         value = "web"
       },
       {
-        name = "certResolvers.letsencrypt.storage"
+        name  = "certResolvers.letsencrypt.storage"
         value = "/data/acme.json"
       },
+      # We run a single node microk8, so we set the service to nodeport and expose the ports
+      # directly. I've also hacked the service node port range to allow for this
       {
-        name = "service.spec.loadBalancerIP"
-        value = "192.9.182.251"
+        name = "service.type"
+        value = "NodePort"
+      },
+      {
+        name="ports.web.nodePort"
+        value="80"
+      },
+      {
+        name="ports.websecure.nodePort"
+        value="443"
       }
-    ]
+    ] : []
 
     content {
       name  = set.value.name
@@ -54,12 +100,13 @@ resource "helm_release" "traefik_proxy" {
 resource "kubernetes_ingress_v1" "noco" {
   metadata {
     name      = "nocodb"
-    namespace = local.namespace
+    namespace = local.namespace[var.environment]
   }
 
   spec {
+    ingress_class_name = local.ingress_classname[var.environment]
     rule {
-      host = var.environment == "LOCAL" ? "noco.me.davidkwong.net" : "noco.davidkwong.net"
+      host = local.noco_host[var.environment]
       http {
         path {
           path = "/"
@@ -80,7 +127,7 @@ resource "kubernetes_ingress_v1" "noco" {
 resource "kubernetes_service" "noco" {
   metadata {
     name      = "nocodb"
-    namespace = local.namespace
+    namespace = local.namespace[var.environment]
   }
   spec {
     selector = {
@@ -97,7 +144,7 @@ resource "kubernetes_service" "noco" {
 resource "kubernetes_deployment" "noco" {
   metadata {
     name      = "noco"
-    namespace = local.namespace
+    namespace = local.namespace[var.environment]
   }
   spec {
     replicas = 1
@@ -123,7 +170,7 @@ resource "kubernetes_deployment" "noco" {
 
           env {
             name  = "NC_DB"
-            value = "pg://database.pastureen:5432?u=postgres&p=my_password&d=nocodb"
+            value = "pg://database.${local.namespace[var.environment]}:5432?u=postgres&p=my_password&d=nocodb"
           }
         }
       }

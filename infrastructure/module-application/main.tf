@@ -250,7 +250,7 @@ resource "kubernetes_deployment" "development_container" {
       spec {
         container {
           name  = "development-container"
-          image = "haskell:9.4.8-slim"
+          image = "20544dk/dev-container:1.0"
           port {
             container_port = 8080
           }

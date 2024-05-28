@@ -11,6 +11,7 @@ build-type:     Simple
 library
   exposed-modules:
       Pipeline
+      PipelineTagless
   other-modules:
       Paths_util_scripts
   hs-source-dirs:

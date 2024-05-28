@@ -77,16 +77,16 @@ resource "helm_release" "traefik_proxy" {
       # I run a single node microk8, so I set the service to nodeport and expose the ports
       # directly. I've also hacked the service node port range to allow for this
       {
-        name = "service.type"
+        name  = "service.type"
         value = "NodePort"
       },
       {
-        name="ports.web.nodePort"
-        value="80"
+        name  = "ports.web.nodePort"
+        value = "80"
       },
       {
-        name="ports.websecure.nodePort"
-        value="443"
+        name  = "ports.websecure.nodePort"
+        value = "443"
       }
     ] : []
 
@@ -171,6 +171,99 @@ resource "kubernetes_deployment" "noco" {
           env {
             name  = "NC_DB"
             value = "pg://database.${local.namespace[var.environment]}:5432?u=postgres&p=my_password&d=nocodb"
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume" "application_dir" {
+  count = var.environment == "PRODUCTION" ? 0 : 1
+
+  metadata {
+    name = "${local.namespace[var.environment]}-application-dir"
+    labels = {
+      pv_name = "${local.namespace[var.environment]}-application-dir"
+    }
+  }
+
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    capacity = {
+      storage = "20Gi"
+    }
+    persistent_volume_reclaim_policy = "Retain"
+    storage_class_name               = "hostpath"
+
+    persistent_volume_source {
+      host_path {
+        path = "/Users/david/dev/pastureen-h/application"
+      }
+    }
+  }
+}
+
+resource "kubernetes_persistent_volume_claim" "application_dir" {
+  count = var.environment == "PRODUCTION" ? 0 : 1
+
+  metadata {
+    name      = "application-dir"
+    namespace = local.namespace[var.environment]
+  }
+
+  spec {
+
+    selector {
+      match_labels = {
+        pv_name = "${local.namespace[var.environment]}-application-dir"
+      }
+    }
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "20Gi"
+      }
+    }
+  }
+}
+
+resource "kubernetes_deployment" "development_container" {
+  count = var.environment == "PRODUCTION" ? 0 : 1
+  metadata {
+    name      = "development-container"
+    namespace = local.namespace[var.environment]
+  }
+  spec {
+    replicas = 1
+    selector {
+      match_labels = {
+        app = "development-container"
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          app = "development-container"
+        }
+      }
+      spec {
+        container {
+          name  = "development-container"
+          image = "haskell:9.4.8-slim"
+          port {
+            container_port = 8080
+          }
+
+          volume_mount {
+            name       = "application-dir"
+            mount_path = "/app"
+          }
+        }
+        volume {
+          name = "application-dir"
+          persistent_volume_claim {
+            claim_name = "application-dir"
           }
         }
       }

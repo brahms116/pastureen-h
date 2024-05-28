@@ -44,6 +44,8 @@ resource "kubernetes_service" "database" {
 }
 
 resource "kubernetes_persistent_volume" "data" {
+  count = var.environment == "PRODUCTION" ? 0 : 1
+
   metadata {
     name = "${local.namespace[var.environment]}-data"
     labels = {

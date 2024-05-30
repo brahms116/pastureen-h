@@ -30,6 +30,8 @@ resource "kubernetes_deployment" "development_container" {
         container {
           name  = "development-container"
           image = "20544dk/dev-container:1.0"
+          image_pull_policy = "Always"
+
           port {
             container_port = 8080
           }

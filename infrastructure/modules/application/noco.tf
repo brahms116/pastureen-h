@@ -64,6 +64,7 @@ resource "kubernetes_deployment" "noco" {
         container {
           name  = "noco"
           image = "nocodb/nocodb:latest"
+          image_pull_policy = "Always"
 
           port {
             container_port = 8080

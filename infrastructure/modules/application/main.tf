@@ -34,4 +34,3 @@ locals {
     "TEST"       = "application-dir-test",
   }
 }
-

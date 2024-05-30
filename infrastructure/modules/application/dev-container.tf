@@ -1,5 +1,5 @@
 module "development_container_storage" {
-  count = var.environment == "PRODUCTION" ? 0 : 1
+  count       = var.environment == "PRODUCTION" ? 0 : 1
   source      = "../storage"
   environment = var.environment
   hostpath    = "/Users/david/dev/pastureen-h/application"
@@ -7,7 +7,7 @@ module "development_container_storage" {
 }
 
 module "stack_dir_storage" {
-  count = var.environment == "PRODUCTION" ? 0 : 1
+  count       = var.environment == "PRODUCTION" ? 0 : 1
   source      = "../storage"
   environment = var.environment
   hostpath    = "/Users/david/.stack-k8"
@@ -36,9 +36,14 @@ resource "kubernetes_deployment" "development_container" {
       }
       spec {
         container {
-          name  = "development-container"
-          image = "20544dk/dev-container:1.0"
+          name              = "development-container"
+          image             = "20544dk/dev-container:1.0"
           image_pull_policy = "Always"
+
+          command = [
+            # Dunno why it has to run the api otherwise it just bad gateways
+            "stack", "run", "api-exe"
+          ]
 
           port {
             container_port = 8080

@@ -10,7 +10,7 @@ echo $DOCKER_HUB_TOKEN | docker login --username $DOCKER_HUB_USERNAME --password
 
 ### Dev Container
 
-Just the stand haskell container with a custom command to keep it running.
+Just the standard haskell container with some customisations
 
 To build and push:
 

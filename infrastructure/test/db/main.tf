@@ -7,11 +7,11 @@ terraform {
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
-  config_context = "docker-desktop"
+  config_path = "~/.kube/config_test"
+  config_context = "test"
 }
 
 module "db_deployment" {
-  source      = "../../module-db"
+  source      = "../../module/db"
   environment = "TEST"
 }

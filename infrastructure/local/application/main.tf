@@ -8,16 +8,16 @@ terraform {
 
 provider "helm" {
   kubernetes {
-    config_path = "~/.kube/config"
-    config_context = "docker-desktop"
+    config_path = "~/.kube/config_local"
+    config_context = "local"
   }
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
+  config_path = "~/.kube/config_local"
 }
 
 module "application_deployment" {
-  source      = "../../module-application"
+  source      = "../../module/application"
   environment = "LOCAL"
 }

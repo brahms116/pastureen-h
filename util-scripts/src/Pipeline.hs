@@ -67,26 +67,42 @@ envInfraDirReal Test = "../infrastructure/test"
 envInfraDirReal Production = "../infrastructure/production"
 
 envKubeContext :: Env -> String
-envKubeContext Local = "docker-desktop"
-envKubeContext Test = "docker-desktop"
-envKubeContext Production = "oracle-context"
+envKubeContext Local = "local"
+envKubeContext Test = "test"
+envKubeContext Production = "production"
+
+envKubeConfigPath :: Env -> FilePath
+envKubeConfigPath Local = "$HOME/.kube/config_local"
+envKubeConfigPath Test = "$HOME/.kube/config_test"
+envKubeConfigPath Production = "$HOME/.kube/config_production"
 
 envKubeNamspace :: Env -> String
-envKubeNamspace Local = "pastureen"
+envKubeNamspace Local = "pastureen-local"
 envKubeNamspace Test = "pastureen-test"
-envKubeNamspace Production = "pastureen"
+envKubeNamspace Production = "pastureen-production"
 
 setKubeContext :: Env -> IO ()
 setKubeContext env = do
-  P.callCommand $ "kubectl config use-context " ++ envKubeContext env
-  P.callCommand $ "kubectl config set-context --current --namespace=" ++ envKubeNamspace env
+  P.callCommand $
+    envKubeCommand env
+      ++ " config use-context "
+      ++ envKubeContext env
+  P.callCommand $
+    envKubeCommand env
+      ++ " config set-context --current --namespace="
+      ++ envKubeNamspace env
+
+envKubeCommand :: Env -> String
+envKubeCommand Local = "kubectl --kubeconfig=$HOME/.kube/config_local "
+envKubeCommand Test = "kubectl --kubeconfig=$HOME/.kube/config_test "
+envKubeCommand Production = "kubectl --kubeconfig=$HOME/.kube/config_production "
 
 envRunDbActionFnReal :: Env -> RunDbActionFn
 envRunDbActionFnReal env db action =
   let open :: IO (P.ProcessHandle, DbConnection)
       open = do
         setKubeContext env
-        ph <- P.spawnCommand "kubectl port-forward svc/database 5432:5432"
+        ph <- P.spawnCommand $ envKubeCommand env ++ " port-forward svc/database 5432:5432"
         -- Wait 3 seconds for the port-forward to be ready
         C.threadDelay 3000000
         conn <- PG.connectPostgreSQL $ fromString $ "postgresql://postgres@localhost:5432/" ++ db

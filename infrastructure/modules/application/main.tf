@@ -1,8 +1,8 @@
 locals {
   namespace = {
-    "LOCAL"      = "pastureen",
+    "LOCAL"      = "pastureen-local",
     "TEST"       = "pastureen-test",
-    "PRODUCTION" = "pastureen"
+    "PRODUCTION" = "pastureen-production"
   }
 
   noco_host = {

@@ -18,6 +18,6 @@ provider "kubernetes" {
 }
 
 module "application_deployment" {
-  source      = "../../module/application"
+  source      = "../../modules/application"
   environment = "TEST"
 }

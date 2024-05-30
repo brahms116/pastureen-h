@@ -3,7 +3,7 @@ module "development_container_storage" {
   source      = "../storage"
   environment = var.environment
   hostpath    = "/User/david/dev/pastureen-h/application"
-  name        = locals.application_dir_name[var.environment]
+  name        = local.application_dir_name[var.environment]
 }
 
 

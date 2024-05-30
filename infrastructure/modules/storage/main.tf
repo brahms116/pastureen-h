@@ -39,6 +39,8 @@ resource "kubernetes_persistent_volume" "data" {
 }
 
 resource "kubernetes_persistent_volume_claim" "data" {
+  depends_on = [kubernetes_persistent_volume.data]
+
   metadata {
     name      = var.name
     namespace = local.namespace[var.environment]
@@ -57,5 +59,7 @@ resource "kubernetes_persistent_volume_claim" "data" {
         storage = var.storage_size
       }
     }
+
+    volume_name = var.name
   }
 }

@@ -12,6 +12,6 @@ provider "kubernetes" {
 }
 
 module "db_deployment" {
-  source      = "../../module/db"
+  source      = "../../modules/db"
   environment = "TEST"
 }

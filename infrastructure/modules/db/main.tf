@@ -1,27 +1,29 @@
 locals {
   namespace = {
-    "LOCAL"      = "pastureen",
+    "LOCAL"      = "pastureen-local",
     "TEST"       = "pastureen-test",
-    "PRODUCTION" = "pastureen"
+    "PRODUCTION" = "pastureen-production"
   }
 
-  storage_class = {
-    "LOCAL"      = "hostpath",
-    "TEST"       = "hostpath",
-    "PRODUCTION" = "microk8s-hostpath"
-  }
-
-  hostpath = {
+  db_hostpath = {
     "LOCAL"      = "/Users/david/pg-data",
     "TEST"       = "/Users/david/pg-test-data",
     "PRODUCTION" = "/var/lib/postgresql/data"
   }
+
+  db_data_name = {
+    "LOCAL"      = "db-data-local",
+    "TEST"       = "db-data-test",
+    "PRODUCTION" = "db-data-production"
+  }
 }
 
-resource "kubernetes_namespace" "main" {
-  metadata {
-    name = local.namespace[var.environment]
-  }
+module "db_storage" {
+  source       = "../storage"
+  environment  = var.environment
+  storage_size = "10Gi"
+  name         = local.db_data_name[var.environment]
+  hostpath    = local.db_hostpath[var.environment]
 }
 
 resource "kubernetes_service" "database" {
@@ -43,57 +45,6 @@ resource "kubernetes_service" "database" {
   }
 }
 
-resource "kubernetes_persistent_volume" "data" {
-  count = var.environment == "PRODUCTION" ? 0 : 1
-
-  metadata {
-    name = "${local.namespace[var.environment]}-data"
-    labels = {
-      pv_name = "${local.namespace[var.environment]}-data"
-    }
-  }
-
-  spec {
-    access_modes = ["ReadWriteOnce"]
-    capacity = {
-      storage = "20Gi"
-    }
-    persistent_volume_reclaim_policy = "Retain"
-    storage_class_name               = local.storage_class[var.environment]
-
-    persistent_volume_source {
-      host_path {
-        path = local.hostpath[var.environment]
-      }
-    }
-  }
-}
-
-resource "kubernetes_persistent_volume_claim" "data" {
-  metadata {
-    name      = "data"
-    namespace = local.namespace[var.environment]
-  }
-
-  spec {
-
-    dynamic "selector" {
-      for_each = var.environment == "PRODUCTION" ? [] : [1]
-      content {
-        match_labels = {
-          pv_name = "${local.namespace[var.environment]}-data"
-        }
-      }
-    }
-
-    access_modes = ["ReadWriteOnce"]
-    resources {
-      requests = {
-        storage = "8Gi"
-      }
-    }
-  }
-}
 
 resource "kubernetes_deployment" "database" {
   metadata {
@@ -139,15 +90,15 @@ resource "kubernetes_deployment" "database" {
           }
 
           volume_mount {
-            name       = "data"
+            name       = "db-data"
             mount_path = "/var/lib/postgresql/data"
           }
         }
 
         volume {
-          name = "data"
+          name = "db-data"
           persistent_volume_claim {
-            claim_name = "data"
+            claim_name = local.db_data_name[var.environment]
           }
         }
       }

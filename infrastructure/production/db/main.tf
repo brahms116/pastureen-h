@@ -7,11 +7,11 @@ terraform {
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
-  config_context = "oracle-context"
+  config_path = "~/.kube/config_production"
+  config_context = "production"
 }
 
 module "db_deployment" {
-  source      = "../../module-db"
+  source      = "../../modules/db"
   environment = "PRODUCTION"
 }

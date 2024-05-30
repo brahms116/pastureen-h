@@ -33,8 +33,6 @@ Pull the respective env files then add them to a secret called pastureen-secrets
 kl create secret generic --from-env-file ./local.env
 ```
 
-bahblahblah
-
-
+Create the blank stack root directory for the local and test development containers at `/Users/david/.stack-k8`
 
 

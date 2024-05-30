@@ -33,4 +33,15 @@ locals {
     "LOCAL"      = "application-dir-local",
     "TEST"       = "application-dir-test",
   }
+
+  stack_dir_name = {
+    "LOCAL"      = "stack-dir-local",
+    "TEST"       = "stack-dir-test",
+  }
+
+  api_host = {
+    "LOCAL"      = "me.davidkwong.net",
+    "TEST"       = "me.davidkwong.net",
+    "PRODUCTION" = "www.davidkwong.net"
+  }
 }

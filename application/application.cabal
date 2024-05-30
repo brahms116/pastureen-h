@@ -20,10 +20,6 @@ source-repository head
   location: https://github.com/githubuser/application
 
 library
-  exposed-modules:
-      Lib
-      Lib2
-      Nested.Lib3
   other-modules:
       Paths_application
   autogen-modules:
@@ -35,14 +31,14 @@ library
       base >=4.7 && <5
   default-language: Haskell2010
 
-executable application-exe
+executable api-exe
   main-is: Main.hs
   other-modules:
       Paths_application
   autogen-modules:
       Paths_application
   hs-source-dirs:
-      app
+      api
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       application

@@ -26,9 +26,9 @@ library:
   source-dirs: src
 
 executables:
-  application-exe:
+  api-exe:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         api
     ghc-options:
     - -threaded
     - -rtsopts

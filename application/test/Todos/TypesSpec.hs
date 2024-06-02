@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Todos.TypesSpec (spec) where
 
@@ -73,7 +74,7 @@ expectedCreateTodoistTaskJson =
         "assignee_id": "12345",
         "project_id": "12345",
         "content": "Buy Me",
-        "due_datetime": "2016-09-01T12:00:00.Z"
+        "due_datetime": "2016-09-01T12:00:00Z"
     }
   |]
 

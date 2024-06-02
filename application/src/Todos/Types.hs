@@ -17,9 +17,9 @@ type TodoistTaskId = T.Text
 
 data TodoistTask = TodoistTask
   { tdtId :: !TodoistTaskId,
-    tdtAssigneeId :: !(Maybe String),
-    tdtProjectId :: !String,
-    tdtTitle :: !String,
+    tdtAssigneeId :: !(Maybe T.Text),
+    tdtProjectId :: !T.Text,
+    tdtTitle :: !T.Text,
     tdtCompleted :: !Bool,
     tdtDateTime :: !UTCTime
   }
@@ -47,9 +47,9 @@ instance ToJSON TodoistTask where
       ]
 
 data CreateTodoistTask = CreateTodoistTask
-  { ctdtAssigneeId :: !(Maybe String),
-    ctdtProjectId :: !(Maybe String),
-    ctdtTitle :: !String,
+  { ctdtAssigneeId :: !(Maybe T.Text),
+    ctdtProjectId :: !(Maybe T.Text),
+    ctdtTitle :: !T.Text,
     ctdtDateTime :: !UTCTime
   }
   deriving (Show, Eq)
@@ -64,7 +64,7 @@ instance ToJSON CreateTodoistTask where
       ]
 
 data GetTodoOpts = GetTodoOpts
-  { gtoProjectId :: !(Maybe String),
+  { gtoProjectId :: !(Maybe T.Text),
     gtoIsOverdue :: !(Maybe Bool)
   }
   deriving (Show, Eq)

@@ -20,6 +20,10 @@ source-repository head
   location: https://github.com/githubuser/application
 
 library
+  exposed-modules:
+      Todos.Domain
+      Todos.Types
+      Util
   other-modules:
       Paths_application
   autogen-modules:
@@ -30,8 +34,14 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , bytestring
+    , hspec
     , mtl
+    , neat-interpolation
+    , req
     , scotty
+    , text
+    , time
     , warp
   default-language: Haskell2010
 
@@ -48,8 +58,14 @@ executable api-exe
       aeson
     , application
     , base >=4.7 && <5
+    , bytestring
+    , hspec
     , mtl
+    , neat-interpolation
+    , req
     , scotty
+    , text
+    , time
     , warp
   default-language: Haskell2010
 
@@ -57,6 +73,8 @@ test-suite application-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Todos.TypesSpec
+      Util
       Paths_application
   autogen-modules:
       Paths_application
@@ -67,7 +85,13 @@ test-suite application-test
       aeson
     , application
     , base >=4.7 && <5
+    , bytestring
+    , hspec
     , mtl
+    , neat-interpolation
+    , req
     , scotty
+    , text
+    , time
     , warp
   default-language: Haskell2010

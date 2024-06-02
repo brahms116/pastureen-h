@@ -4,13 +4,16 @@ module Todos.Types
   ( TodoistTask (..),
     TodoistTaskId,
     CreateTodoistTask (..),
+    GetTodoOpts (..),
+    defaultGetTodoOpts
   )
 where
 
 import Data.Aeson
+import qualified Data.Text as T
 import Data.Time.Clock
 
-type TodoistTaskId = String
+type TodoistTaskId = T.Text
 
 data TodoistTask = TodoistTask
   { tdtId :: !TodoistTaskId,
@@ -59,3 +62,12 @@ instance ToJSON CreateTodoistTask where
         "content" .= title,
         "due_datetime" .= dt
       ]
+
+data GetTodoOpts = GetTodoOpts
+  { gtoProjectId :: !(Maybe String),
+    gtoIsOverdue :: !(Maybe Bool)
+  }
+  deriving (Show, Eq)
+
+defaultGetTodoOpts :: GetTodoOpts
+defaultGetTodoOpts = GetTodoOpts Nothing Nothing

@@ -1,8 +1,15 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Todos.Domain (HasTodoistToken, CreateTodo (..), DeleteTodo (..)) where
+module Todos.Domain
+  ( HasTodoistToken,
+    CreateTodo (..),
+    DeleteTodo (..),
+    GetTodos (..),
+  )
+where
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -10,15 +17,14 @@ import Network.HTTP.Req
 import Todos.Types
 import Util
 
-type TodoistToken = String
+type TodoistToken = T.Text
 
 class (Monad m) => HasTodoistToken m where
   getTodoistToken :: m TodoistToken
 
-withTokenOpts :: (HasTodoistToken m) => m (Option scheme)
+withTokenOpts :: (HasTodoistToken m) => m (Option 'Https)
 withTokenOpts = do
-  token <- getTodoistToken
-  return $ header "Authorization" $ TE.encodeUtf8 $ T.pack $ "Bearer " ++ token
+  oAuth2Token . TE.encodeUtf8 <$> getTodoistToken
 
 class (Monad m) => DeleteTodo m where
   deleteTodo :: TodoistTaskId -> m ()
@@ -29,7 +35,7 @@ class (Monad m) => DeleteTodo m where
       runHttpReq $
         req
           DELETE
-          (https "api.todoist.com" /: "rest" /: "v2" /: "tasks" /: T.pack taskId)
+          (https "api.todoist.com" /: "rest" /: "v2" /: "tasks" /: taskId)
           NoReqBody
           ignoreResponse
           option
@@ -50,9 +56,20 @@ class CreateTodo m where
           option
     return $ responseBody response
 
-class GetTodos m where
-  getTodos :: m [TodoistTask]
-  default getTodos :: (MonadRunHttp m, HasTodoistToken m) => m [TodoistTask]
-  getTodos = do
-    option <- withTokenOpts
-    undefined
+gtoToOpts :: GetTodoOpts -> Option 'Https
+gtoToOpts (GetTodoOpts projectId isOverdue) =
+  let projectIdOpt = maybe mempty ("project_id" =:) projectId
+      isOverdueOpt =
+        maybe
+          mempty
+          (\x -> "filter" =: (if x then "overdue" :: T.Text else "!overdue"))
+          isOverdue
+   in projectIdOpt <> isOverdueOpt
+
+class (Monad m) => GetTodos m where
+  getTodos :: GetTodoOpts -> m [TodoistTask]
+  default getTodos :: (MonadRunHttp m, HasTodoistToken m) => GetTodoOpts -> m [TodoistTask]
+  getTodos opts = do
+    option <- (gtoToOpts opts <>) <$> withTokenOpts
+    response <- runHttpReq $ req GET (https "api.todoist.com" /: "rest" /: "v2" /: "tasks") NoReqBody jsonResponse option
+    return $ responseBody response

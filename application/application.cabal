@@ -73,8 +73,11 @@ test-suite application-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Config
+      TestUtil
+      Todos.DomainSpec
+      Todos.TestUtil
       Todos.TypesSpec
-      Util
       Paths_application
   autogen-modules:
       Paths_application

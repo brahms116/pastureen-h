@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Todos.Domain
-  ( HasTodoistToken,
+  ( HasTodoistToken(..),
     CreateTodo (..),
     DeleteTodo (..),
     GetTodos (..),

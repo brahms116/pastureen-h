@@ -10,7 +10,7 @@ import Data.Time
 import NeatInterpolation
 import Test.Hspec
 import Todos.Types
-import Util
+import TestUtil
 
 testTodoistTaskJson :: BLU.ByteString
 testTodoistTaskJson =

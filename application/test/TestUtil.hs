@@ -1,4 +1,4 @@
-module Util (unformatJsonStr) where
+module TestUtil (unformatJsonStr) where
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BLU

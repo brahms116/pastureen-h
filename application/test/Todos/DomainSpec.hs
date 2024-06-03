@@ -29,14 +29,15 @@ spec = do
   describe "Todos.Domain" $ do
     describe "withTestTodos" $ do
       it "should not crash" $ do
-        currentTime <- getCurrentTime
         withTestTodos
-          [ CreateTodoistTask
-              { ctdtTitle = "Something to do",
-                ctdtProjectId = Nothing,
-                ctdtDateTime = currentTime,
-                ctdtAssigneeId = Nothing
-              }
-          ]
+          ( \x ->
+              [ CreateTodoistTask
+                  { ctdtTitle = "Something to do",
+                    ctdtProjectId = Nothing,
+                    ctdtDateTime = x,
+                    ctdtAssigneeId = Nothing
+                  }
+              ]
+          )
           (const $ return ())
           `shouldReturn` ()

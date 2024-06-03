@@ -7,6 +7,7 @@ module Todos.TestUtil (TestTodoDomainM (..), withTestTodos) where
 import Config
 import Control.Exception
 import Control.Monad.Reader
+import Data.Time
 import Todos.Domain
 import Todos.Types
 import Util (MonadRunHttp (..))
@@ -40,5 +41,8 @@ deleteTodos ts =
     mapM_ deleteTodo $
       tdtId <$> ts
 
-withTestTodos :: [CreateTodoistTask] -> ([TodoistTask] -> IO ()) -> IO ()
-withTestTodos cts a = bracket (createTodos cts) a deleteTodos
+withTestTodos :: (UTCTime -> [CreateTodoistTask]) -> ([TodoistTask] -> IO ()) -> IO ()
+withTestTodos cts a = do
+  currentTime <- getCurrentTime
+  bracket ((createTodos . cts) currentTime) deleteTodos a
+

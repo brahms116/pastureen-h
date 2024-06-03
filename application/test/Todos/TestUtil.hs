@@ -2,7 +2,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Todos.TestUtil (TestTodoDomainM (..), withTestTodos) where
+module Todos.TestUtil (TestTodoDomainM (..), withTestTodos, runTestTodoDomainM) where
 
 import Config
 import Control.Exception
@@ -45,4 +45,3 @@ withTestTodos :: (UTCTime -> [CreateTodoistTask]) -> ([TodoistTask] -> IO ()) ->
 withTestTodos cts a = do
   currentTime <- getCurrentTime
   bracket ((createTodos . cts) currentTime) deleteTodos a
-

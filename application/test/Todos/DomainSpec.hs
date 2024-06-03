@@ -41,3 +41,10 @@ spec = do
           )
           (const $ return ())
           `shouldReturn` ()
+    around (withTestTodos testTodos) $ do
+      describe "Get Todos" $ do
+        it "Should return overdue todos" $ \loadedTodos -> do
+          todos <- runTestTodoDomainM $ getTodos $ defaultGetTodoOpts {gtoIsOverdue = Just True}
+          length todos `shouldBe` 1
+          tdtTitle (head todos) `shouldBe` tdtTitle (head loadedTodos)
+

@@ -27,10 +27,12 @@ kl create namespace pastureen-local
 kt create namespace pastureen-test
 kp create namespace pastureen-production
 ```
-Pull the respective env files then add them to a secret called pastureen-secrets
+
+Pull the respective env files then add them to a secret called pt-secrets
 
 ```
-kl create secret generic --from-env-file ./local.env
+kl create secret generic pt-secrets --from-env-file ./.local.env
+kt create secret generic pt-secrets --from-env-file ./.test.env
 ```
 
 Create the blank stack root directory for the local and test development containers at `/Users/david/.stack-k8`

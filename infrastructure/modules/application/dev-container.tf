@@ -45,6 +45,19 @@ resource "kubernetes_deployment" "development_container" {
             "stack", "run", "api-exe"
           ]
 
+          dynamic "env" {
+            for_each = local.application_container_envs
+            content {
+              name = env.value.name
+              value_from {
+                secret_key_ref {
+                  name = "pt-secrets"
+                  key = env.value.name
+                }
+              }
+            }
+          }
+
           port {
             container_port = 8080
           }

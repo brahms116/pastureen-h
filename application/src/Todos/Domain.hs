@@ -24,7 +24,7 @@ class (Monad m) => HasTodoistToken m where
 
 withTokenOpts :: (HasTodoistToken m) => m (Option 'Https)
 withTokenOpts = do
-  oAuth2Token . TE.encodeUtf8 <$> getTodoistToken
+  oAuth2Bearer . TE.encodeUtf8 <$> getTodoistToken
 
 class (Monad m) => DeleteTodo m where
   deleteTodo :: TodoistTaskId -> m ()

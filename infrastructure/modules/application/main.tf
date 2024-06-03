@@ -30,13 +30,13 @@ locals {
   }
 
   application_dir_name = {
-    "LOCAL"      = "application-dir-local",
-    "TEST"       = "application-dir-test",
+    "LOCAL" = "application-dir-local",
+    "TEST"  = "application-dir-test",
   }
 
   stack_dir_name = {
-    "LOCAL"      = "stack-dir-local",
-    "TEST"       = "stack-dir-test",
+    "LOCAL" = "stack-dir-local",
+    "TEST"  = "stack-dir-test",
   }
 
   api_host = {
@@ -44,4 +44,11 @@ locals {
     "TEST"       = "me.davidkwong.net",
     "PRODUCTION" = "www.davidkwong.net"
   }
+
+
+  application_container_envs = [
+    {
+      name = "PT_TODOIST_TOKEN"
+    }
+  ]
 }

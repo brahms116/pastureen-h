@@ -47,4 +47,10 @@ spec = do
           todos <- runTestTodoDomainM $ getTodos $ defaultGetTodoOpts {gtoIsOverdue = Just True}
           length todos `shouldBe` 1
           tdtTitle (head todos) `shouldBe` tdtTitle (head loadedTodos)
-
+        it "Should return non-overdue todos" $ \loadedTodos -> do
+          todos <- runTestTodoDomainM $ getTodos $ defaultGetTodoOpts {gtoIsOverdue = Just False}
+          length todos `shouldBe` 1
+          tdtTitle (head todos) `shouldBe` tdtTitle (head todos)
+        it "Should return all the todos" $ \_ -> do
+          todos <- runTestTodoDomainM $ getTodos defaultGetTodoOpts
+          length todos `shouldBe` 2

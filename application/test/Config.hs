@@ -4,13 +4,15 @@
 
 module Config (TestConfig (..), defaultTestConfig) where
 
-import qualified Data.Text as T
-import System.Environment
 import Control.Monad.Trans
+import qualified Data.Text as T
+import Notifications
+import System.Environment
 import Todos.Domain
 
 data TestConfig = TestConfig
-  { tcfgtpdoistToken :: T.Text
+  { tcfgTodoistToken :: T.Text,
+    tcfgNtfyTopic :: !NotificationTopic
   }
   deriving (Show, Eq)
 
@@ -20,4 +22,7 @@ defaultTestConfig = do
   return $ TestConfig token
 
 instance HasTodoistToken TestConfig where
-  getTodoistToken = tcfgtpdoistToken
+  getTodoistToken = tcfgTodoistToken
+
+instance HasNotificationTopic TestConfig where
+  getNotificationTopic = tcfgNtfyTopic

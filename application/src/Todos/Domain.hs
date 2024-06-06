@@ -60,7 +60,7 @@ class CreateTodo m where
     return $ responseBody response
 
 gtoToOpts :: GetTodoOpts -> Option 'Https
-gtoToOpts (GetTodoOpts projectId isOverdue) =
+gtoToOpts (GetTodoOpts projectId _isOverdue) =
   -- The todoist api is borked with timezones
   -- So we are not using the isOverDue option
   -- let projectIdOpt = maybe mempty ("project_id" =:) projectId
@@ -72,15 +72,16 @@ gtoToOpts (GetTodoOpts projectId isOverdue) =
   --  in projectIdOpt <> isOverdueOpt
   maybe mempty ("project_id" =:) projectId
 
-isTodoOverDue :: TodoTask -> UTCTime -> Maybe Bool
-isTodoOverDue task now = (`isTodoTimeOverdue` now) <$> tdtDateTime task
+isTodoOverdue :: TodoTask -> UTCTime -> Maybe Bool
+isTodoOverdue task now = (`isTodoTimeOverdue` now) <$> tdtDateTime task
 
-applyOverdueFilter :: (MonadIO m) => [TodoTask] -> Maybe Bool -> m [TodoTask]
+applyOverdueFilter :: (MonadIO m) => [TodoTask] -> Maybe OverdueFilter -> m [TodoTask]
 applyOverdueFilter tasks isOverdue =
-  let flag :: Bool -> Bool -> Bool
+  let -- Flag to treat the result of the filter. If overdue is true, then we keep otherwise invert
+      flag :: OverdueFilter -> (Bool -> Bool)
       flag ov = if ov then id else not
-      filterFn :: UTCTime -> Bool -> TodoTask -> Bool
-      filterFn ct ov task = maybe False (flag ov) (isTodoOverDue task ct)
+      filterFn :: UTCTime -> OverdueFilter -> (TodoTask -> Bool)
+      filterFn ct ov task = maybe False (flag ov) (isTodoOverdue task ct)
    in do
         currentTime <- liftIO getCurrentTime
         return $

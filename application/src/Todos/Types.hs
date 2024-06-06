@@ -9,6 +9,7 @@ module Todos.Types
     TodoTime (..),
     defaultGetTodoOpts,
     isTodoTimeOverdue,
+    OverdueFilter
   )
 where
 
@@ -102,9 +103,11 @@ instance ToJSON CreateTodoTask where
         todoTimePair dt
       ]
 
+type OverdueFilter = Bool
+
 data GetTodoOpts = GetTodoOpts
   { gtoProjectId :: !(Maybe T.Text),
-    gtoIsOverdue :: !(Maybe Bool)
+    gtoIsOverdue :: !(Maybe OverdueFilter)
   }
   deriving (Show, Eq)
 

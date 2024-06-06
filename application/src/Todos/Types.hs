@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Todos.Types
@@ -5,15 +6,44 @@ module Todos.Types
     TodoistTaskId,
     CreateTodoistTask (..),
     GetTodoOpts (..),
-    defaultGetTodoOpts
+    TodoTime (..),
+    defaultGetTodoOpts,
   )
 where
 
 import Data.Aeson
+import Data.Aeson.Types
 import qualified Data.Text as T
-import Data.Time.Clock
+import Data.Time
+import Data.Time.Format.ISO8601
 
 type TodoistTaskId = T.Text
+
+data TodoTime = TodoDateOnly !Day | TodoLocal !LocalTime | TodoUTC !UTCTime deriving (Show, Eq)
+
+parseTodoTime :: T.Text -> TodoTime
+parseTodoTime t =
+  let tString = T.unpack t
+      localTime = iso8601ParseM tString :: Maybe LocalTime
+      day = iso8601ParseM tString :: Maybe Day
+      utcTime = iso8601ParseM tString :: Maybe UTCTime
+   in case (localTime, day, utcTime) of
+        (Just x, _, _) -> TodoLocal x
+        (_, Just x, _) -> TodoDateOnly x
+        (_, _, Just x) -> TodoUTC x
+        _failure -> error $ "Could not parse time: " ++ tString
+
+fmtTodoTime :: TodoTime -> T.Text
+fmtTodoTime x = case x of
+  TodoDateOnly y -> T.pack $ formatShow iso8601Format y
+  TodoLocal y -> T.pack $ formatShow iso8601Format y
+  TodoUTC y -> T.pack $ formatShow iso8601Format y
+
+todoTimePair :: TodoTime -> Pair
+todoTimePair t = case t of
+  TodoDateOnly _ -> "due_date" .= fmtTodoTime t
+  TodoLocal _ -> "due_datetime" .= fmtTodoTime t
+  TodoUTC _ -> "due_datetime" .= fmtTodoTime t
 
 data TodoistTask = TodoistTask
   { tdtId :: !TodoistTaskId,
@@ -21,7 +51,7 @@ data TodoistTask = TodoistTask
     tdtProjectId :: !T.Text,
     tdtTitle :: !T.Text,
     tdtCompleted :: !Bool,
-    tdtDateTime :: !UTCTime
+    tdtDateTime :: !(Maybe TodoTime)
   }
   deriving (Show, Eq)
 
@@ -33,24 +63,23 @@ instance FromJSON TodoistTask where
       <*> v .: "project_id"
       <*> v .: "content"
       <*> v .: "is_completed"
-      <*> (v .: "due" >>= (.: "datetime"))
-
-instance ToJSON TodoistTask where
-  toJSON (TodoistTask id' assignee project title completed dt) =
-    object
-      [ "id" .= id',
-        "asignee_id" .= assignee,
-        "project" .= project,
-        "content" .= title,
-        "is_completed" .= completed,
-        "due" .= object ["datetime" .= dt]
-      ]
+      <*> ( fmap parseTodoTime
+              <$> ( v .:? "due"
+                      >>= ( \case
+                              Just y ->
+                                let dateTime = y .: "datetime"
+                                    date = y .: "date"
+                                 in dateTime <> date
+                              Nothing -> return Nothing
+                          )
+                  )
+          )
 
 data CreateTodoistTask = CreateTodoistTask
   { ctdtAssigneeId :: !(Maybe T.Text),
     ctdtProjectId :: !(Maybe T.Text),
     ctdtTitle :: !T.Text,
-    ctdtDateTime :: !UTCTime
+    ctdtDateTime :: !TodoTime
   }
   deriving (Show, Eq)
 
@@ -60,7 +89,7 @@ instance ToJSON CreateTodoistTask where
       [ "assignee_id" .= assignee,
         "project_id" .= project,
         "content" .= title,
-        "due_datetime" .= dt
+        todoTimePair dt
       ]
 
 data GetTodoOpts = GetTodoOpts

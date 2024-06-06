@@ -5,14 +5,13 @@
 
 module Todos.Domain
   ( HasTodoistToken (..),
-    CreateTodo (..),
-    DeleteTodo (..),
-    GetTodos (..),
+    MonadCreateTodo (..),
+    MonadDeleteTodo (..),
+    MonadGetTodos (..),
   )
 where
 
-import Control.Monad.Trans
-import Data.Maybe
+import Control.Monad.Reader
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Time
@@ -22,16 +21,16 @@ import Util
 
 type TodoistToken = T.Text
 
-class (Monad m) => HasTodoistToken m where
-  getTodoistToken :: m TodoistToken
+class HasTodoistToken m where
+  getTodoistToken :: m -> TodoistToken
 
-withTokenOpts :: (HasTodoistToken m) => m (Option 'Https)
+withTokenOpts :: (MonadReader t m, HasTodoistToken t) => m (Option 'Https)
 withTokenOpts = do
-  oAuth2Bearer . TE.encodeUtf8 <$> getTodoistToken
+  asks ((oAuth2Bearer . TE.encodeUtf8) . getTodoistToken)
 
-class (Monad m) => DeleteTodo m where
+class (Monad m) => MonadDeleteTodo m where
   deleteTodo :: TodoId -> m ()
-  default deleteTodo :: (MonadRunHttp m, HasTodoistToken m) => TodoId -> m ()
+  default deleteTodo :: (MonadRunHttp m, MonadReader t m, HasTodoistToken t) => TodoId -> m ()
   deleteTodo taskId = do
     option <- withTokenOpts
     _ <-
@@ -44,9 +43,9 @@ class (Monad m) => DeleteTodo m where
           option
     return ()
 
-class CreateTodo m where
+class (Monad m) => MonadCreateTodo m where
   createTodo :: CreateTodoTask -> m TodoTask
-  default createTodo :: (MonadRunHttp m, HasTodoistToken m) => CreateTodoTask -> m TodoTask
+  default createTodo :: (MonadRunHttp m, MonadReader t m, HasTodoistToken t) => CreateTodoTask -> m TodoTask
   createTodo cdtd = do
     option <- withTokenOpts
     response <-
@@ -90,9 +89,9 @@ applyOverdueFilter tasks isOverdue =
             (\x -> filter (filterFn currentTime x) tasks)
             isOverdue
 
-class (Monad m) => GetTodos m where
+class (Monad m) => MonadGetTodos m where
   getTodos :: GetTodoOpts -> m [TodoTask]
-  default getTodos :: (MonadRunHttp m, HasTodoistToken m) => GetTodoOpts -> m [TodoTask]
+  default getTodos :: (MonadRunHttp m, MonadReader t m ,HasTodoistToken t) => GetTodoOpts -> m [TodoTask]
   getTodos opts = do
     option <- (gtoToOpts opts <>) <$> withTokenOpts
     response <-

@@ -22,10 +22,12 @@ newtype TestTodoDomainM a = TestTodoDomainM
       MonadIO,
       MonadReader TestConfig
     )
-  deriving anyclass (MonadRunHttp, CreateTodo, DeleteTodo, GetTodos)
-
-instance HasTodoistToken TestTodoDomainM where
-  getTodoistToken = asks tcfgTodoistToken
+  deriving anyclass
+    ( MonadRunHttp,
+      MonadCreateTodo,
+      MonadDeleteTodo,
+      MonadGetTodos
+    )
 
 runTestTodoDomainM :: TestTodoDomainM a -> IO a
 runTestTodoDomainM m = do

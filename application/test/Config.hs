@@ -7,6 +7,7 @@ module Config (TestConfig (..), defaultTestConfig) where
 import qualified Data.Text as T
 import System.Environment
 import Control.Monad.Trans
+import Todos.Domain
 
 data TestConfig = TestConfig
   { tcfgTodoistToken :: T.Text
@@ -17,3 +18,6 @@ defaultTestConfig :: (MonadIO m) => m TestConfig
 defaultTestConfig = do
   token <- liftIO $ T.pack <$> getEnv "PT_TODOIST_TOKEN"
   return $ TestConfig token
+
+instance HasTodoistToken TestConfig where
+  getTodoistToken = tcfgTodoistToken

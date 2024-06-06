@@ -24,15 +24,15 @@ type TodoistToken = T.Text
 class HasTodoistToken m where
   getTodoistToken :: m -> TodoistToken
 
-withTokenOpts :: (MonadReader t m, HasTodoistToken t) => m (Option 'Https)
-withTokenOpts = do
+tokenOpts :: (MonadReader t m, HasTodoistToken t) => m (Option 'Https)
+tokenOpts = do
   asks ((oAuth2Bearer . TE.encodeUtf8) . getTodoistToken)
 
 class (Monad m) => MonadDeleteTodo m where
   deleteTodo :: TodoId -> m ()
   default deleteTodo :: (MonadRunHttp m, MonadReader t m, HasTodoistToken t) => TodoId -> m ()
   deleteTodo taskId = do
-    option <- withTokenOpts
+    option <- tokenOpts
     _ <-
       runHttpReq $
         req
@@ -47,7 +47,7 @@ class (Monad m) => MonadCreateTodo m where
   createTodo :: CreateTodoTask -> m TodoTask
   default createTodo :: (MonadRunHttp m, MonadReader t m, HasTodoistToken t) => CreateTodoTask -> m TodoTask
   createTodo cdtd = do
-    option <- withTokenOpts
+    option <- tokenOpts
     response <-
       runHttpReq $
         req
@@ -58,8 +58,8 @@ class (Monad m) => MonadCreateTodo m where
           option
     return $ responseBody response
 
-gtoToOpts :: GetTodoOpts -> Option 'Https
-gtoToOpts (GetTodoOpts projectId _isOverdue) =
+gtpToOpts :: GetTodoParams -> Option 'Https
+gtpToOpts (GetTodoParams projectId _isOverdue) =
   -- The todoist api is borked with timezones
   -- So we are not using the isOverDue option
   -- let projectIdOpt = maybe mempty ("project_id" =:) projectId
@@ -73,14 +73,12 @@ gtoToOpts (GetTodoOpts projectId _isOverdue) =
 
 data OverdueStatus = Overdue | NotOverdue | NA deriving (Show, Eq)
 
-classifyOverdue :: TodoTask -> UTCTime -> OverdueStatus
+classifyOverdue :: TodoTask -> CurrentTime -> OverdueStatus
 classifyOverdue task now =
-  case tdtDateTime task of
-    Nothing -> NA
-    Just dt ->
-      if isTodoTimeOverdue dt now
-        then Overdue
-        else NotOverdue
+  maybe
+    NA
+    (\dt -> if isTodoTimeOverdue dt now then Overdue else NotOverdue)
+    (tdtDateTime task)
 
 filterToAllowedStatuses :: Maybe OverdueFilter -> [OverdueStatus]
 filterToAllowedStatuses Nothing = [Overdue, NotOverdue, NA]
@@ -93,10 +91,10 @@ applyOverdueFilter tasks isOverdue = do
   return $ [t | t <- tasks, classifyOverdue t currentTime `elem` filterToAllowedStatuses isOverdue]
 
 class (Monad m) => MonadGetTodos m where
-  getTodos :: GetTodoOpts -> m [TodoTask]
-  default getTodos :: (MonadRunHttp m, MonadReader t m, HasTodoistToken t) => GetTodoOpts -> m [TodoTask]
+  getTodos :: GetTodoParams -> m [TodoTask]
+  default getTodos :: (MonadRunHttp m, MonadReader t m, HasTodoistToken t) => GetTodoParams -> m [TodoTask]
   getTodos opts = do
-    option <- (gtoToOpts opts <>) <$> withTokenOpts
+    option <- (gtpToOpts opts <>) <$> tokenOpts
     response <-
       runHttpReq $
         req
@@ -105,4 +103,4 @@ class (Monad m) => MonadGetTodos m where
           NoReqBody
           jsonResponse
           option
-    applyOverdueFilter (responseBody response) (gtoIsOverdue opts)
+    applyOverdueFilter (responseBody response) (gtpIsOverdue opts)

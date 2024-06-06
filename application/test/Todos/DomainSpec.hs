@@ -44,13 +44,13 @@ spec = do
     around (withTestTodos testTodos) $ do
       describe "get-todos" $ do
         it "should-return-overdue-todos" $ \loadedTodos -> do
-          todos <- runTestTodoDomainM $ getTodos $ defaultGetTodoOpts {gtoIsOverdue = Just True}
+          todos <- runTestTodoDomainM $ getTodos $ defaultGetTodoParams {gtpIsOverdue = Just True}
           length todos `shouldBe` 1
           tdtTitle (head todos) `shouldBe` tdtTitle (head loadedTodos)
         it "should-return-non-overdue-todos" $ \loadedTodos -> do
-          todos <- runTestTodoDomainM $ getTodos $ defaultGetTodoOpts {gtoIsOverdue = Just False}
+          todos <- runTestTodoDomainM $ getTodos $ defaultGetTodoParams {gtpIsOverdue = Just False}
           length todos `shouldBe` 1
           tdtTitle (head todos) `shouldBe` tdtTitle (loadedTodos !! 1)
         it "should-return-all-the-todos" $ \_ -> do
-          todos <- runTestTodoDomainM $ getTodos defaultGetTodoOpts
+          todos <- runTestTodoDomainM $ getTodos defaultGetTodoParams
           length todos `shouldBe` 2

@@ -10,7 +10,7 @@ import Control.Monad.Trans
 import Todos.Domain
 
 data TestConfig = TestConfig
-  { tcfgTodoistToken :: T.Text
+  { tcfgtpdoistToken :: T.Text
   }
   deriving (Show, Eq)
 
@@ -20,4 +20,4 @@ defaultTestConfig = do
   return $ TestConfig token
 
 instance HasTodoistToken TestConfig where
-  getTodoistToken = tcfgTodoistToken
+  getTodoistToken = tcfgtpdoistToken

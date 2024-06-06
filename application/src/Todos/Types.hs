@@ -5,11 +5,12 @@ module Todos.Types
   ( TodoTask (..),
     TodoId,
     CreateTodoTask (..),
-    GetTodoOpts (..),
+    GetTodoParams (..),
     TodoTime (..),
-    defaultGetTodoOpts,
+    defaultGetTodoParams,
     isTodoTimeOverdue,
-    OverdueFilter
+    OverdueFilter,
+    CurrentTime
   )
 where
 
@@ -47,14 +48,16 @@ todoTimePair t = case t of
   TodoLocal _ -> "due_datetime" .= fmtTodoTime t
   TodoUTC _ -> "due_datetime" .= fmtTodoTime t
 
-isTodoTimeOverdue :: TodoTime -> UTCTime -> Bool
-isTodoTimeOverdue t now =
+type CurrentTime = UTCTime
+
+isTodoTimeOverdue :: TodoTime -> CurrentTime -> Bool
+isTodoTimeOverdue t n =
   let tz :: TimeZone
       tz = read "+10:00"
    in case t of
-        TodoDateOnly y -> y < (localDay . utcToLocalTime tz) now
-        TodoLocal y -> y < utcToLocalTime tz now
-        TodoUTC y -> y < now
+        TodoDateOnly y -> y < (localDay . utcToLocalTime tz) n
+        TodoLocal y -> y < utcToLocalTime tz n
+        TodoUTC y -> y < n
 
 data TodoTask = TodoTask
   { tdtId :: !TodoId,
@@ -105,11 +108,11 @@ instance ToJSON CreateTodoTask where
 
 type OverdueFilter = Bool
 
-data GetTodoOpts = GetTodoOpts
-  { gtoProjectId :: !(Maybe T.Text),
-    gtoIsOverdue :: !(Maybe OverdueFilter)
+data GetTodoParams = GetTodoParams
+  { gtpProjectId :: !(Maybe T.Text),
+    gtpIsOverdue :: !(Maybe OverdueFilter)
   }
   deriving (Show, Eq)
 
-defaultGetTodoOpts :: GetTodoOpts
-defaultGetTodoOpts = GetTodoOpts Nothing Nothing
+defaultGetTodoParams :: GetTodoParams
+defaultGetTodoParams = GetTodoParams Nothing Nothing

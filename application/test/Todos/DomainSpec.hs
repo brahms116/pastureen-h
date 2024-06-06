@@ -8,15 +8,15 @@ import Todos.Domain
 import Todos.TestUtil
 import Todos.Types
 
-testTodos :: UTCTime -> [CreateTodoistTask]
+testTodos :: UTCTime -> [CreateTodoTask]
 testTodos currentTime =
-  [ CreateTodoistTask
+  [ CreateTodoTask
       { ctdtTitle = "A long time overdue",
         ctdtProjectId = Nothing,
         ctdtDateTime = TodoUTC $ addUTCTime (-nominalDay) currentTime,
         ctdtAssigneeId = Nothing
       },
-    CreateTodoistTask
+    CreateTodoTask
       { ctdtTitle = "Not overdue",
         ctdtProjectId = Nothing,
         ctdtDateTime = TodoUTC $ addUTCTime nominalDay currentTime,
@@ -31,7 +31,7 @@ spec = do
       currentTime <- getCurrentTime
       _ <- runTestTodoDomainM $
         createTodo
-          CreateTodoistTask
+          CreateTodoTask
             { ctdtTitle = "Something to do",
               ctdtProjectId = Nothing,
               ctdtDateTime = TodoUTC $ addUTCTime (-nominalDay) currentTime,
@@ -42,7 +42,7 @@ spec = do
       it "should-not-crash-with-utc-time" $ do
         withTestTodos
           ( \x ->
-              [ CreateTodoistTask
+              [ CreateTodoTask
                   { ctdtTitle = "Something to do",
                     ctdtProjectId = Nothing,
                     ctdtDateTime = TodoUTC x,

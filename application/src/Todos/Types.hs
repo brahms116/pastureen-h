@@ -2,9 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Todos.Types
-  ( TodoistTask (..),
-    TodoistTaskId,
-    CreateTodoistTask (..),
+  ( TodoTask (..),
+    TodoId,
+    CreateTodoTask (..),
     GetTodoOpts (..),
     TodoTime (..),
     defaultGetTodoOpts,
@@ -17,7 +17,7 @@ import qualified Data.Text as T
 import Data.Time
 import Data.Time.Format.ISO8601
 
-type TodoistTaskId = T.Text
+type TodoId = T.Text
 
 data TodoTime = TodoDateOnly !Day | TodoLocal !LocalTime | TodoUTC !UTCTime deriving (Show, Eq)
 
@@ -45,8 +45,8 @@ todoTimePair t = case t of
   TodoLocal _ -> "due_datetime" .= fmtTodoTime t
   TodoUTC _ -> "due_datetime" .= fmtTodoTime t
 
-data TodoistTask = TodoistTask
-  { tdtId :: !TodoistTaskId,
+data TodoTask = TodoTask
+  { tdtId :: !TodoId,
     tdtAssigneeId :: !(Maybe T.Text),
     tdtProjectId :: !T.Text,
     tdtTitle :: !T.Text,
@@ -55,9 +55,9 @@ data TodoistTask = TodoistTask
   }
   deriving (Show, Eq)
 
-instance FromJSON TodoistTask where
+instance FromJSON TodoTask where
   parseJSON = withObject "Todo" $ \v ->
-    TodoistTask
+    TodoTask
       <$> v .: "id"
       <*> v .:? "assignee_id"
       <*> v .: "project_id"
@@ -75,7 +75,7 @@ instance FromJSON TodoistTask where
                   )
           )
 
-data CreateTodoistTask = CreateTodoistTask
+data CreateTodoTask = CreateTodoTask
   { ctdtAssigneeId :: !(Maybe T.Text),
     ctdtProjectId :: !(Maybe T.Text),
     ctdtTitle :: !T.Text,
@@ -83,8 +83,8 @@ data CreateTodoistTask = CreateTodoistTask
   }
   deriving (Show, Eq)
 
-instance ToJSON CreateTodoistTask where
-  toJSON (CreateTodoistTask assignee project title dt) =
+instance ToJSON CreateTodoTask where
+  toJSON (CreateTodoTask assignee project title dt) =
     object
       [ "assignee_id" .= assignee,
         "project_id" .= project,

@@ -27,8 +27,8 @@ withTokenOpts = do
   oAuth2Bearer . TE.encodeUtf8 <$> getTodoistToken
 
 class (Monad m) => DeleteTodo m where
-  deleteTodo :: TodoistTaskId -> m ()
-  default deleteTodo :: (MonadRunHttp m, HasTodoistToken m) => TodoistTaskId -> m ()
+  deleteTodo :: TodoId -> m ()
+  default deleteTodo :: (MonadRunHttp m, HasTodoistToken m) => TodoId -> m ()
   deleteTodo taskId = do
     option <- withTokenOpts
     _ <-
@@ -42,8 +42,8 @@ class (Monad m) => DeleteTodo m where
     return ()
 
 class CreateTodo m where
-  createTodo :: CreateTodoistTask -> m TodoistTask
-  default createTodo :: (MonadRunHttp m, HasTodoistToken m) => CreateTodoistTask -> m TodoistTask
+  createTodo :: CreateTodoTask -> m TodoTask
+  default createTodo :: (MonadRunHttp m, HasTodoistToken m) => CreateTodoTask -> m TodoTask
   createTodo cdtd = do
     option <- withTokenOpts
     response <-
@@ -67,8 +67,8 @@ gtoToOpts (GetTodoOpts projectId isOverdue) =
    in projectIdOpt <> isOverdueOpt
 
 class (Monad m) => GetTodos m where
-  getTodos :: GetTodoOpts -> m [TodoistTask]
-  default getTodos :: (MonadRunHttp m, HasTodoistToken m) => GetTodoOpts -> m [TodoistTask]
+  getTodos :: GetTodoOpts -> m [TodoTask]
+  default getTodos :: (MonadRunHttp m, HasTodoistToken m) => GetTodoOpts -> m [TodoTask]
   getTodos opts = do
     option <- (gtoToOpts opts <>) <$> withTokenOpts
     response <- runHttpReq $ req GET (https "api.todoist.com" /: "rest" /: "v2" /: "tasks") NoReqBody jsonResponse option

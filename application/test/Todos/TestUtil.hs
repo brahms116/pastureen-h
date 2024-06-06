@@ -32,16 +32,16 @@ runTestTodoDomainM m = do
   config <- defaultTestConfig
   runReaderT (unTestTodoDomainM m) config
 
-createTodos :: [CreateTodoistTask] -> IO [TodoistTask]
+createTodos :: [CreateTodoTask] -> IO [TodoTask]
 createTodos cts = runTestTodoDomainM $ mapM createTodo cts
 
-deleteTodos :: [TodoistTask] -> IO ()
+deleteTodos :: [TodoTask] -> IO ()
 deleteTodos ts =
   runTestTodoDomainM $
     mapM_ deleteTodo $
       tdtId <$> ts
 
-withTestTodos :: (UTCTime -> [CreateTodoistTask]) -> ([TodoistTask] -> IO ()) -> IO ()
+withTestTodos :: (UTCTime -> [CreateTodoTask]) -> ([TodoTask] -> IO ()) -> IO ()
 withTestTodos cts a = do
   currentTime <- getCurrentTime
   bracket ((createTodos . cts) currentTime) deleteTodos a

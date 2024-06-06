@@ -86,9 +86,9 @@ testTodoistTaskJson =
     }
   |]
 
-expectedTodoistTask :: TodoistTask
+expectedTodoistTask :: TodoTask
 expectedTodoistTask =
-  TodoistTask
+  TodoTask
     { tdtId = "2995104339",
       tdtAssigneeId = Just "2671362",
       tdtProjectId = "2203306141",
@@ -101,7 +101,7 @@ expectedTodoistTask =
               sinceMidnight midday
     }
 
-expectedTodoistTaskLocal :: TodoistTask
+expectedTodoistTaskLocal :: TodoTask
 expectedTodoistTaskLocal =
   expectedTodoistTask
     { tdtDateTime =
@@ -110,7 +110,7 @@ expectedTodoistTaskLocal =
             LocalTime (fromGregorian 2016 9 1) midday
     }
 
-expectedTodoistTaskDateOnly :: TodoistTask
+expectedTodoistTaskDateOnly :: TodoTask
 expectedTodoistTaskDateOnly =
   expectedTodoistTask
     { tdtDateTime =
@@ -119,9 +119,9 @@ expectedTodoistTaskDateOnly =
             fromGregorian 2016 9 1
     }
 
-testCreateTodoistTask :: CreateTodoistTask
+testCreateTodoistTask :: CreateTodoTask
 testCreateTodoistTask =
-  CreateTodoistTask
+  CreateTodoTask
     { ctdtAssigneeId = Just "12345",
       ctdtProjectId = Just "12345",
       ctdtTitle = "Buy Me",

@@ -8,6 +8,7 @@ module Todos.Types
     GetTodoOpts (..),
     TodoTime (..),
     defaultGetTodoOpts,
+    isTodoTimeOverdue,
   )
 where
 
@@ -44,6 +45,15 @@ todoTimePair t = case t of
   TodoDateOnly _ -> "due_date" .= fmtTodoTime t
   TodoLocal _ -> "due_datetime" .= fmtTodoTime t
   TodoUTC _ -> "due_datetime" .= fmtTodoTime t
+
+isTodoTimeOverdue :: TodoTime -> UTCTime -> Bool
+isTodoTimeOverdue t now =
+  let tz :: TimeZone
+      tz = read "+10:00"
+   in case t of
+        TodoDateOnly y -> y < (localDay . utcToLocalTime tz) now
+        TodoLocal y -> y < utcToLocalTime tz now
+        TodoUTC y -> y < now
 
 data TodoTask = TodoTask
   { tdtId :: !TodoId,

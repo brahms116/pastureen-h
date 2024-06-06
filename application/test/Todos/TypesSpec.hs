@@ -155,6 +155,33 @@ spec = do
       eitherDecode testTodoistTaskJsonDateOnly
         `shouldBe` Right expectedTodoistTaskDateOnly
 
+  describe "isTodoTimeOverdue" $ do
+    it "should-flag-overdue-for-date-only" $
+      isTodoTimeOverdue
+        (TodoDateOnly $ fromGregorian 2016 9 2)
+        (UTCTime (fromGregorian 2016 9 2) (timeOfDayToTime (TimeOfDay 14 1 0)))
+        `shouldBe` True
+    it "should-not-flag-overdue-for-date-only" $
+      isTodoTimeOverdue
+        (TodoDateOnly $ fromGregorian 2016 9 2)
+        (UTCTime (fromGregorian 2016 9 2) (timeOfDayToTime (TimeOfDay 13 59 0)))
+        `shouldBe` False
+    it "should-flag-overdue-for-local-time" $
+      isTodoTimeOverdue
+        (TodoLocal $ LocalTime (fromGregorian 2016 9 2) (TimeOfDay 0 0 0))
+        (UTCTime (fromGregorian 2016 9 1) (timeOfDayToTime (TimeOfDay 14 1 0)))
+        `shouldBe` True
+    it "should-not-flag-overdue-for-local-time" $
+      isTodoTimeOverdue
+        (TodoLocal $ LocalTime (fromGregorian 2016 9 2) (TimeOfDay 0 0 0))
+        (UTCTime (fromGregorian 2016 9 1) (timeOfDayToTime (TimeOfDay 13 59 0)))
+        `shouldBe` False
+    it "should-flag-overdue-for-utc-time" $
+      isTodoTimeOverdue
+        (TodoUTC $ UTCTime (fromGregorian 2016 9 2) (timeOfDayToTime (TimeOfDay 0 0 0)))
+        (UTCTime (fromGregorian 2016 9 2) (timeOfDayToTime (TimeOfDay 0 1 0)))
+        `shouldBe` True
+
   describe "CreateTodoistTask" $ do
     it "should-serialize-correctly" $
       encode testCreateTodoistTask `shouldBe` expectedCreateTodoistTaskJson

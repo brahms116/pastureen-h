@@ -77,16 +77,17 @@ isTodoOverDue task now = (`isTodoTimeOverdue` now) <$> tdtDateTime task
 
 applyOverdueFilter :: (MonadIO m) => [TodoTask] -> Maybe Bool -> m [TodoTask]
 applyOverdueFilter tasks isOverdue =
-  case isOverdue of
-    Nothing -> return tasks
-    Just overdue ->
-      let condition = if overdue then id else not
-       in do
-            currentTime <- liftIO getCurrentTime
-            return $
-              filter
-                (\x -> maybe False condition (isTodoOverDue x currentTime))
-                tasks
+  let flag :: Bool -> Bool -> Bool
+      flag ov = if ov then id else not
+      filterFn :: UTCTime -> Bool -> TodoTask -> Bool
+      filterFn ct ov task = maybe False (flag ov) (isTodoOverDue task ct)
+   in do
+        currentTime <- liftIO getCurrentTime
+        return $
+          maybe
+            tasks
+            (\x -> filter (filterFn currentTime x) tasks)
+            isOverdue
 
 class (Monad m) => GetTodos m where
   getTodos :: GetTodoOpts -> m [TodoTask]

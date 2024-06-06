@@ -19,7 +19,8 @@ data TestConfig = TestConfig
 defaultTestConfig :: (MonadIO m) => m TestConfig
 defaultTestConfig = do
   token <- liftIO $ T.pack <$> getEnv "PT_TODOIST_TOKEN"
-  return $ TestConfig token
+  topic <- liftIO $ T.pack <$> getEnv "PT_NTFY_TOPIC"
+  return $ TestConfig token topic
 
 instance HasTodoistToken TestConfig where
   getTodoistToken = tcfgTodoistToken

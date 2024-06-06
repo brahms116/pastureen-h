@@ -71,27 +71,30 @@ gtoToOpts (GetTodoOpts projectId _isOverdue) =
   --  in projectIdOpt <> isOverdueOpt
   maybe mempty ("project_id" =:) projectId
 
-isTodoOverdue :: TodoTask -> UTCTime -> Maybe Bool
-isTodoOverdue task now = (`isTodoTimeOverdue` now) <$> tdtDateTime task
+data OverdueStatus = Overdue | NotOverdue | NA deriving (Show, Eq)
+
+classifyOverdue :: TodoTask -> UTCTime -> OverdueStatus
+classifyOverdue task now =
+  case tdtDateTime task of
+    Nothing -> NA
+    Just dt ->
+      if isTodoTimeOverdue dt now
+        then Overdue
+        else NotOverdue
+
+filterToAllowedStatuses :: Maybe OverdueFilter -> [OverdueStatus]
+filterToAllowedStatuses Nothing = [Overdue, NotOverdue, NA]
+filterToAllowedStatuses (Just True) = [Overdue]
+filterToAllowedStatuses (Just False) = [NotOverdue]
 
 applyOverdueFilter :: (MonadIO m) => [TodoTask] -> Maybe OverdueFilter -> m [TodoTask]
-applyOverdueFilter tasks isOverdue =
-  let -- Flag to treat the result of the filter. If overdue is true, then we keep otherwise invert
-      flag :: OverdueFilter -> (Bool -> Bool)
-      flag ov = if ov then id else not
-      filterFn :: UTCTime -> OverdueFilter -> (TodoTask -> Bool)
-      filterFn ct ov task = maybe False (flag ov) (isTodoOverdue task ct)
-   in do
-        currentTime <- liftIO getCurrentTime
-        return $
-          maybe
-            tasks
-            (\x -> filter (filterFn currentTime x) tasks)
-            isOverdue
+applyOverdueFilter tasks isOverdue = do
+  currentTime <- liftIO getCurrentTime
+  return $ [t | t <- tasks, classifyOverdue t currentTime `elem` filterToAllowedStatuses isOverdue]
 
 class (Monad m) => MonadGetTodos m where
   getTodos :: GetTodoOpts -> m [TodoTask]
-  default getTodos :: (MonadRunHttp m, MonadReader t m ,HasTodoistToken t) => GetTodoOpts -> m [TodoTask]
+  default getTodos :: (MonadRunHttp m, MonadReader t m, HasTodoistToken t) => GetTodoOpts -> m [TodoTask]
   getTodos opts = do
     option <- (gtoToOpts opts <>) <$> withTokenOpts
     response <-

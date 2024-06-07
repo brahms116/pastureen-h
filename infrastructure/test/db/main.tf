@@ -14,4 +14,5 @@ provider "kubernetes" {
 module "db_deployment" {
   source      = "../../modules/db"
   environment = "TEST"
+  db_storage_hostpath = var.db_test_data_dir
 }

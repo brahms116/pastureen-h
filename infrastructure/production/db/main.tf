@@ -14,4 +14,5 @@ provider "kubernetes" {
 module "db_deployment" {
   source      = "../../modules/db"
   environment = "PRODUCTION"
+  db_storage_hostpath = "/var/lib/postgresql/data"
 }

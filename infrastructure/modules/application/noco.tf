@@ -94,7 +94,7 @@ resource "kubernetes_deployment" "noco" {
 
 module "noco_storage" {
   source       = "../storage"
-  hostpath     = local.noco_data_hostpath[var.environment]
+  hostpath     = var.noco_meta_dir
   environment  = var.environment
   storage_size = "1Gi"
   name         = local.noco_data_store_name[var.environment]

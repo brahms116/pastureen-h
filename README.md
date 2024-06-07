@@ -28,13 +28,35 @@ kt create namespace pastureen-test
 kp create namespace pastureen-production
 ```
 
-Pull the respective env files then add them to a secret called pt-secrets
+Create the secrets `pt-secrets` in each environment
 
 ```
-kl create secret generic pt-secrets --from-env-file ./.local.env
-kt create secret generic pt-secrets --from-env-file ./.test.env
+kl create secret generic pt-secrets 
+kt create secret generic pt-secrets
+kp create secret generic pt-secrets
 ```
 
-Create the blank stack root directory for the local and test development containers at `/Users/david/.stack-k8`
+Edit each secret to contain the following credentials
+
+- `PT_TODOIST_TOKEN` -> The access token required for the Todoist API
+- `PT_NTFY_TOPIC` -> The ntfy sh topic which is used to push notifications
 
 
+Create the following `TF_VAR`s in your shell environment
+
+- `TF_VAR_application_root` -> The absolute path to the haskell stack application root
+- `TF_VAR_stack_dir` -> The absolute path to the global stack directory
+- `TF_VAR_data_dir` -> The absolute path to the postgres db data dir for local development
+- `TF_VAR_db_test_data_dir` -> The absolute path to the postgres db data dir for test development
+- `TF_VAR_noco_meta_dir` -> The absolute path for the nocodb volume, dunno why this is needed
+- `TF_VAR_noco_test_meta_dir` -> The absolute path for the test nocodb volume, dunno why this is needed
+
+
+```fish
+set -gx TF_VAR_application_root "/Users/david/dev/pastureen-h/application"
+set -gx TF_VAR_stack_dir "/Users/david/.stack-k8"
+set -gx TF_VAR_db_data_dir "/Users/david/pg-data"
+set -gx TF_VAR_db_test_data_dir "/Users/david/pg-test-data"
+set -gx TF_VAR_noco_meta_dir "/Users/david/noco"
+set -gx TF_VAR_noco_test_meta_dir "/Users/david/noco-test"
+```

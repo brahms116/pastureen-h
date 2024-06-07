@@ -5,12 +5,6 @@ locals {
     "PRODUCTION" = "pastureen-production"
   }
 
-  db_hostpath = {
-    "LOCAL"      = "/Users/david/pg-data",
-    "TEST"       = "/Users/david/pg-test-data",
-    "PRODUCTION" = "/var/lib/postgresql/data"
-  }
-
   db_data_name = {
     "LOCAL"      = "db-data-local",
     "TEST"       = "db-data-test",
@@ -23,7 +17,7 @@ module "db_storage" {
   environment  = var.environment
   storage_size = "10Gi"
   name         = local.db_data_name[var.environment]
-  hostpath    = local.db_hostpath[var.environment]
+  hostpath    = var.db_storage_hostpath
 }
 
 resource "kubernetes_service" "database" {

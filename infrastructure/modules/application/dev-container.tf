@@ -2,7 +2,7 @@ module "development_container_storage" {
   count       = var.environment == "PRODUCTION" ? 0 : 1
   source      = "../storage"
   environment = var.environment
-  hostpath    = "/Users/david/dev/pastureen-h/application"
+  hostpath    = var.application_dir
   name        = local.application_dir_name[var.environment]
 }
 
@@ -10,7 +10,7 @@ module "stack_dir_storage" {
   count       = var.environment == "PRODUCTION" ? 0 : 1
   source      = "../storage"
   environment = var.environment
-  hostpath    = "/Users/david/.stack-k8"
+  hostpath    = var.stack_dir
   name        = local.stack_dir_name[var.environment]
 }
 

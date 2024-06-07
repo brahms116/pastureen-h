@@ -23,12 +23,6 @@ locals {
     "PRODUCTION" = "noco-data-production"
   }
 
-  noco_data_hostpath = {
-    "LOCAL"      = "/Users/david/noco",
-    "TEST"       = "/Users/david/noco-test"
-    "PRODUCTION" = "/var/lib/noco"
-  }
-
   application_dir_name = {
     "LOCAL" = "application-dir-local",
     "TEST"  = "application-dir-test",
@@ -49,6 +43,9 @@ locals {
   application_container_envs = [
     {
       name = "PT_TODOIST_TOKEN"
+    },
+    {
+      name = "PT_NTFY_TOPIC"
     }
   ]
 }

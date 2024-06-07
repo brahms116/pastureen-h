@@ -71,6 +71,30 @@ executable api-exe
     , warp
   default-language: Haskell2010
 
+executable worker-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_application
+  autogen-modules:
+      Paths_application
+  hs-source-dirs:
+      worker
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , application
+    , base >=4.7 && <5
+    , bytestring
+    , hspec
+    , mtl
+    , neat-interpolation
+    , req
+    , scotty
+    , text
+    , time
+    , warp
+  default-language: Haskell2010
+
 test-suite application-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs

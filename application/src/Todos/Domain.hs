@@ -8,6 +8,7 @@ module Todos.Domain
     MonadCreateTodo (..),
     MonadDeleteTodo (..),
     MonadGetTodos (..),
+    TodoistToken
   )
 where
 

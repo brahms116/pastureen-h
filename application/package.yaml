@@ -45,6 +45,15 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - application
+  worker-exe:
+    main:                Main.hs
+    source-dirs:         worker
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - application
 
 tests:
   application-test:

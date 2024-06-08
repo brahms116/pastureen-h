@@ -1,5 +1,7 @@
 # Docker Images
 
+*** All commands below are to be run inside this dir***
+
 ### Docker Login
 
 Login to docker hub via

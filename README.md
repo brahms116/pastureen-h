@@ -1,3 +1,6 @@
+# Pastureen
+
+This is a web project for running automations and potentially a blog in the future.
 
 ## Monorepo Setup
 
@@ -41,6 +44,15 @@ Edit each secret to contain the following credentials
 - `PT_TODOIST_TOKEN` -> The access token required for the Todoist API
 - `PT_NTFY_TOPIC` -> The ntfy sh topic which is used to push notifications
 
+### Deloying Containers and Images
+
+*** Still need to streamline this and figure out stuff ***
+
+Read `./docker/README.MD` for information about building and pushing the conatiner images so that
+the terraform project can reference it
+
+
+### Terraform variable setup
 
 Create the following `TF_VAR`s in your shell environment
 
@@ -59,4 +71,14 @@ set -gx TF_VAR_db_data_dir "/Users/david/pg-data"
 set -gx TF_VAR_db_test_data_dir "/Users/david/pg-test-data"
 set -gx TF_VAR_noco_meta_dir "/Users/david/noco"
 set -gx TF_VAR_noco_test_meta_dir "/Users/david/noco-test"
+```
+
+### Running terraform and db migrations
+
+Execute the terraform and db migrations via the util scripts directory.
+
+***Make sure the correct environment is selected in util-scripts/Main.hs` This still needs some work ***
+
+```fish
+cd util-scripts && stack run
 ```

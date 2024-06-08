@@ -25,7 +25,7 @@ getPtTaskName = do
 data OverdueTodoConfig = OverdueTodoConfig
   { odtCfgTodoistToken :: !TodoistToken,
     odtCfgNtfyTopic :: !NotificationTopic
-  }
+  } deriving (Show)
 
 defaultOdtCfg :: IO OverdueTodoConfig
 defaultOdtCfg = do

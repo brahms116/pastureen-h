@@ -87,7 +87,7 @@ class (Monad m) => MonadSendNotification m where
       runHttpReq $
         req
           POST
-          (https "nfty")
+          (http "159.203.148.75")
           (ReqBodyJson payload)
           ignoreResponse
           mempty

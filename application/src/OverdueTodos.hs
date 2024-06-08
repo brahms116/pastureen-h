@@ -7,6 +7,8 @@ import qualified Data.Text as T
 import Notifications
 import Todos.Domain
 import Todos.Types
+import Control.Monad
+import Control.Applicative
 
 overdueTodosToNotification :: [TodoTask] -> Notification
 overdueTodosToNotification todos =
@@ -16,7 +18,8 @@ overdueTodosToNotification todos =
 
 class (Monad m) => MonadOverdueTodos m where
   notifyOverdueTodos :: m ()
-  default notifyOverdueTodos :: (MonadSendNotification m, MonadGetTodos m) => m ()
+  default notifyOverdueTodos :: (Alternative m, MonadSendNotification m, MonadGetTodos m) => m ()
   notifyOverdueTodos = do
     todos <- getTodos $ defaultGetTodoParams {gtpIsOverdue = Just True}
+    guard $ not $ null todos
     sendNotification $ overdueTodosToNotification todos

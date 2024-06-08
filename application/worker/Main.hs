@@ -11,6 +11,7 @@ import Notifications
 import OverdueTodos
 import System.Environment
 import Todos.Domain
+import Control.Applicative
 import Util
 
 data PtTaskName = NotifiyOverdueTodos deriving (Show)
@@ -45,6 +46,7 @@ newtype OverdueTodoAppM a = OverdueTodoAppM
   deriving newtype
     ( Functor,
       Applicative,
+      Alternative,
       Monad,
       MonadIO,
       MonadReader OverdueTodoConfig

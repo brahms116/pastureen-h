@@ -88,6 +88,9 @@ class (Monad m) => MonadSendNotification m where
         req
           POST
           (http "159.203.148.75")
+           -- The dns inside the container is borked, don't have time to debug too much
+           -- Tried using dig inside the container, it works fine so :/, hope he doesn't rotate the ip
+           -- (http "ntfy.sh")
           (ReqBodyJson payload)
           ignoreResponse
           mempty

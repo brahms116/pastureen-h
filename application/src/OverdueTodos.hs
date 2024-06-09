@@ -7,8 +7,6 @@ import qualified Data.Text as T
 import Notifications
 import Todos.Domain
 import Todos.Types
-import Control.Monad
-import Control.Applicative
 
 overdueTodosToNotification :: [TodoTask] -> Notification
 overdueTodosToNotification todos =

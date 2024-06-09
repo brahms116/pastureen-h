@@ -11,24 +11,42 @@ module Elvanto
 where
 
 import Control.Monad.Reader
+-- import Data.Time
+
+import Data.Aeson
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import Data.Time
 import qualified Network.HTTP.Client as HTTP
 import Network.HTTP.Req
-import Text.Regex.TDFA (getAllTextMatches, (=~))
+import Text.Regex.TDFA ((=~))
 import Util
 
 type ServingRole = T.Text
 
 type ElvantoSessionCookie = HTTP.CookieJar
 
+-- Can't be stuffed parsing atm
+-- type ServingDate = Day
+type ServingDate = T.Text
+
 data ServingRequest = ServingRequest
   { srRole :: !ServingRole,
-    srDate :: !Day
+    srDate :: !ServingDate
   }
   deriving (Show, Eq)
+
+instance FromJSON ServingRequest where
+  parseJSON = withObject "ServingRequest" $
+    \v -> ServingRequest <$> v .: "positionName" <*> v .: "scheduleDateTime"
+
+data ServingRequestsJson = ServingRolesJson
+  { srjRequests :: ![ServingRequest]
+  }
+  deriving (Show, Eq)
+
+instance FromJSON ServingRequestsJson where
+  parseJSON = withObject "ServingRequestsJson" $
+    \v -> ServingRolesJson <$> v .: "scheduleRequests"
 
 data ElvantoCreds = ElvantoCreds
   { ecEmail :: !T.Text,
@@ -47,22 +65,28 @@ class (Monad m) => MonadElvantoLogin m where
     let url = https "annst.elvanto.com.au" /: "login"
     let body = ReqBodyUrlEnc $ "login_username" =: e <> "login_password" =: p
     response <- runHttpReq $ req POST url body bsResponse mempty
-    liftIO $ print $ responseCookieJar response
     return $ responseCookieJar response
 
-getMatch :: T.Text -> T.Text -> [[T.Text]]
-getMatch txt pattern = txt =~ pattern
+re :: BS.ByteString -> BS.ByteString -> [[BS.ByteString]]
+re txt pattern = txt =~ pattern
+
+responseServingRoles :: BS.ByteString -> ServingRequestsJson
+responseServingRoles body =
+  let regex = "Roster.initRequest\\((.*)\\);"
+      regexed = case re body regex of
+        [[_, x]] -> x
+        _error -> error "regex failed"
+   in case eitherDecodeStrict regexed of
+        Left e -> error e
+        Right x -> x
 
 class (Monad m) => MonadPendingRequests m where
   getPendingRequests :: ElvantoSessionCookie -> m [ServingRequest]
   default getPendingRequests :: (MonadRunHttp m) => ElvantoSessionCookie -> m [ServingRequest]
   getPendingRequests cookie = do
     let url = https "annst.elvanto.com.au" /: "roster" /: "requests"
-    response <- runHttpReq $ req GET url NoReqBody bsResponse (cookieJar cookie)
-    let body = responseBody response :: BS.ByteString
-    let regex = "Roster.initRequest\\((.*)\\);" :: T.Text
-    let regexed = case getMatch (T.decodeUtf8 body) regex of
-          [[_, x]] -> x
-          _error -> error "regex failed"
-    liftIO $ print regexed
-    return []
+    roles <-
+      responseServingRoles . responseBody
+        <$> runHttpReq (req GET url NoReqBody bsResponse (cookieJar cookie))
+    liftIO $ print roles
+    return $ srjRequests roles

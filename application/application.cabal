@@ -23,6 +23,7 @@ library
   exposed-modules:
       Elvanto
       Notifications
+      NotifyPendingRequests
       OverdueTodos
       Todos.Domain
       Todos.Types
@@ -107,6 +108,7 @@ test-suite application-test
   main-is: Spec.hs
   other-modules:
       Config
+      ElvantoSpec
       TestUtil
       Todos.DomainSpec
       Todos.TestUtil

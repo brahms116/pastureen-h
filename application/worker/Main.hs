@@ -10,6 +10,7 @@ import Control.Monad.Reader
 import qualified Data.Text as T
 import Elvanto
 import Notifications
+import NotifyPendingRequests
 import OverdueTodos
 import System.Environment
 import Todos.Domain
@@ -100,17 +101,15 @@ newtype PendingServingRequestsAppM a = PendingServingRequestsAppM
     ( MonadRunHttp,
       MonadSendNotification,
       MonadElvantoLogin,
-      MonadPendingRequests
+      MonadPendingRequests,
+      MonadNotifyPendingRequests
     )
 
 runPendingServingRequestsTask :: IO ()
 runPendingServingRequestsTask = do
   cfg <- defaultPsrCfg
   runReaderT
-    ( unPendingServingRequestsAppM $ do
-        cookie <- elvantoLogin
-        requests <- getPendingRequests cookie
-        return ()
+    ( unPendingServingRequestsAppM notifyPendingRequests
     )
     cfg
 

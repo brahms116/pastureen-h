@@ -46,6 +46,12 @@ locals {
     },
     {
       name = "PT_NTFY_TOPIC"
+    },
+    {
+      name = "PT_ELVANTO_EMAIL"
+    },
+    {
+      name = "PT_ELVANTO_PASSWORD"
     }
   ]
 }

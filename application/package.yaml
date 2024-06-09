@@ -21,6 +21,7 @@ dependencies:
 - bytestring
 - req
 - http-client
+- regex-tdfa
 
 ghc-options:
 - -Wall

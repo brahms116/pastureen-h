@@ -15,8 +15,9 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time
-import Network.HTTP.Req
 import qualified Network.HTTP.Client as HTTP
+import Network.HTTP.Req
+import Text.Regex.TDFA (getAllTextMatches, (=~))
 import Util
 
 type ServingRole = T.Text
@@ -49,5 +50,19 @@ class (Monad m) => MonadElvantoLogin m where
     liftIO $ print $ responseCookieJar response
     return $ responseCookieJar response
 
+getMatch :: T.Text -> T.Text -> [[T.Text]]
+getMatch txt pattern = txt =~ pattern
+
 class (Monad m) => MonadPendingRequests m where
   getPendingRequests :: ElvantoSessionCookie -> m [ServingRequest]
+  default getPendingRequests :: (MonadRunHttp m) => ElvantoSessionCookie -> m [ServingRequest]
+  getPendingRequests cookie = do
+    let url = https "annst.elvanto.com.au" /: "roster" /: "requests"
+    response <- runHttpReq $ req GET url NoReqBody bsResponse (cookieJar cookie)
+    let body = responseBody response :: BS.ByteString
+    let regex = "Roster.initRequest\\((.*)\\);" :: T.Text
+    let regexed = case getMatch (T.decodeUtf8 body) regex of
+          [[_, x]] -> x
+          _error -> error "regex failed"
+    liftIO $ print regexed
+    return []

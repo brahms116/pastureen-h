@@ -42,6 +42,7 @@ library
     , http-client
     , mtl
     , neat-interpolation
+    , regex-tdfa
     , req
     , scotty
     , text
@@ -67,6 +68,7 @@ executable api-exe
     , http-client
     , mtl
     , neat-interpolation
+    , regex-tdfa
     , req
     , scotty
     , text
@@ -92,6 +94,7 @@ executable worker-exe
     , http-client
     , mtl
     , neat-interpolation
+    , regex-tdfa
     , req
     , scotty
     , text
@@ -123,6 +126,7 @@ test-suite application-test
     , http-client
     , mtl
     , neat-interpolation
+    , regex-tdfa
     , req
     , scotty
     , text

@@ -99,14 +99,20 @@ newtype PendingServingRequestsAppM a = PendingServingRequestsAppM
   deriving anyclass
     ( MonadRunHttp,
       MonadSendNotification,
-      MonadElvantoLogin
-      -- MonadPendingRequests
+      MonadElvantoLogin,
+      MonadPendingRequests
     )
 
 runPendingServingRequestsTask :: IO ()
 runPendingServingRequestsTask = do
   cfg <- defaultPsrCfg
-  runReaderT (unPendingServingRequestsAppM $ void elvantoLogin) cfg
+  runReaderT
+    ( unPendingServingRequestsAppM $ do
+        cookie <- elvantoLogin
+        requests <- getPendingRequests cookie
+        return ()
+    )
+    cfg
 
 main :: IO ()
 main = do

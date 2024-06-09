@@ -20,6 +20,7 @@ dependencies:
 - text
 - bytestring
 - req
+- http-client
 
 ghc-options:
 - -Wall

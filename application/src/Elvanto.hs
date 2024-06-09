@@ -16,11 +16,12 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Time
 import Network.HTTP.Req
+import qualified Network.HTTP.Client as HTTP
 import Util
 
 type ServingRole = T.Text
 
-type ElvantoSessionCookie = T.Text
+type ElvantoSessionCookie = HTTP.CookieJar
 
 data ServingRequest = ServingRequest
   { srRole :: !ServingRole,
@@ -45,12 +46,8 @@ class (Monad m) => MonadElvantoLogin m where
     let url = https "annst.elvanto.com.au" /: "login"
     let body = ReqBodyUrlEnc $ "login_username" =: e <> "login_password" =: p
     response <- runHttpReq $ req POST url body bsResponse mempty
-    let cookie = responseHeader response "Set-Cookie"
-    case cookie of
-      Just c -> do
-        liftIO $ print c
-        return $ T.decodeUtf8 $ BS.takeWhile (/= ';') c
-      Nothing -> error "No cookie found in response"
+    liftIO $ print $ responseCookieJar response
+    return $ responseCookieJar response
 
 class (Monad m) => MonadPendingRequests m where
   getPendingRequests :: ElvantoSessionCookie -> m [ServingRequest]

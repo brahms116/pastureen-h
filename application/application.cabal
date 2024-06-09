@@ -39,6 +39,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , hspec
+    , http-client
     , mtl
     , neat-interpolation
     , req
@@ -63,6 +64,7 @@ executable api-exe
     , base >=4.7 && <5
     , bytestring
     , hspec
+    , http-client
     , mtl
     , neat-interpolation
     , req
@@ -87,6 +89,7 @@ executable worker-exe
     , base >=4.7 && <5
     , bytestring
     , hspec
+    , http-client
     , mtl
     , neat-interpolation
     , req
@@ -117,6 +120,7 @@ test-suite application-test
     , base >=4.7 && <5
     , bytestring
     , hspec
+    , http-client
     , mtl
     , neat-interpolation
     , req

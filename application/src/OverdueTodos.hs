@@ -18,8 +18,9 @@ overdueTodosToNotification todos =
 
 class (Monad m) => MonadOverdueTodos m where
   notifyOverdueTodos :: m ()
-  default notifyOverdueTodos :: (Alternative m, MonadSendNotification m, MonadGetTodos m) => m ()
+  default notifyOverdueTodos :: (MonadSendNotification m, MonadGetTodos m) => m ()
   notifyOverdueTodos = do
     todos <- getTodos $ defaultGetTodoParams {gtpIsOverdue = Just True}
-    guard $ not $ null todos
-    sendNotification $ overdueTodosToNotification todos
+    case todos of
+      [] -> return ()
+      _ -> sendNotification $ overdueTodosToNotification todos

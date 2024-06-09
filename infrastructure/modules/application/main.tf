@@ -39,7 +39,6 @@ locals {
     "PRODUCTION" = "www.davidkwong.net"
   }
 
-
   application_container_envs = [
     {
       name = "PT_TODOIST_TOKEN"

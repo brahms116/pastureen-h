@@ -2,11 +2,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Elvanto
-  ( ServingRequest (..),
+  ( ServingRequests (..),
     ElvantoCreds (..),
     MonadElvantoLogin (..),
     MonadPendingRequests (..),
     HasElvantoCreds (..),
+    ServingRole,
+    ServingDate,
+    RosterRequest (..),
+    SwapRequest (..),
   )
 where
 
@@ -29,24 +33,35 @@ type ElvantoSessionCookie = HTTP.CookieJar
 -- type ServingDate = Day
 type ServingDate = T.Text
 
-data ServingRequest = ServingRequest
-  { srRole :: !ServingRole,
-    srDate :: !ServingDate
+data RosterRequest = RosterRequest
+  { rqRole :: !ServingRole,
+    rqDate :: !ServingDate
   }
   deriving (Show, Eq)
 
-instance FromJSON ServingRequest where
-  parseJSON = withObject "ServingRequest" $
-    \v -> ServingRequest <$> v .: "positionName" <*> v .: "scheduleDateTime"
+instance FromJSON RosterRequest where
+  parseJSON = withObject "RosterRequest" $
+    \v -> RosterRequest <$> v .: "positionName" <*> v .: "scheduleDateTime"
 
-data ServingRequestsJson = ServingRolesJson
-  { srjRequests :: ![ServingRequest]
+data SwapRequest = SwapRequest
+  { swrRole :: !ServingRole,
+    swrDate :: !ServingDate
   }
   deriving (Show, Eq)
 
-instance FromJSON ServingRequestsJson where
-  parseJSON = withObject "ServingRequestsJson" $
-    \v -> ServingRolesJson <$> v .: "scheduleRequests"
+instance FromJSON SwapRequest where
+  parseJSON = withObject "SwapRequest" $
+    \v -> SwapRequest <$> v .: "position" <*> v .: "dateTimeFormated"
+
+data ServingRequests = ServingRequests
+  { srRequests :: ![RosterRequest],
+    srSwaps :: ![SwapRequest]
+  }
+  deriving (Show, Eq)
+
+instance FromJSON ServingRequests where
+  parseJSON = withObject "ServingRequests" $
+    \v -> ServingRequests <$> v .: "scheduleRequests" <*> v .: "swapReplaceRequests"
 
 data ElvantoCreds = ElvantoCreds
   { ecEmail :: !T.Text,
@@ -67,26 +82,29 @@ class (Monad m) => MonadElvantoLogin m where
     response <- runHttpReq $ req POST url body bsResponse mempty
     return $ responseCookieJar response
 
-re :: BS.ByteString -> BS.ByteString -> [[BS.ByteString]]
+re ::
+  BS.ByteString ->
+  BS.ByteString ->
+  (BS.ByteString, BS.ByteString, BS.ByteString, [BS.ByteString])
 re txt pattern = txt =~ pattern
 
-responseServingRoles :: BS.ByteString -> ServingRequestsJson
+responseServingRoles :: BS.ByteString -> ServingRequests
 responseServingRoles body =
   let regex = "Roster.initRequest\\((.*)\\);"
       regexed = case re body regex of
-        [[_, x]] -> x
+        (_, _, _, x:_ ) -> x
         _error -> error "regex failed"
    in case eitherDecodeStrict regexed of
         Left e -> error e
         Right x -> x
 
 class (Monad m) => MonadPendingRequests m where
-  getPendingRequests :: ElvantoSessionCookie -> m [ServingRequest]
-  default getPendingRequests :: (MonadRunHttp m) => ElvantoSessionCookie -> m [ServingRequest]
+  getPendingRequests :: ElvantoSessionCookie -> m ServingRequests
+  default getPendingRequests :: (MonadRunHttp m) => ElvantoSessionCookie -> m ServingRequests
   getPendingRequests cookie = do
     let url = https "annst.elvanto.com.au" /: "roster" /: "requests"
     roles <-
       responseServingRoles . responseBody
         <$> runHttpReq (req GET url NoReqBody bsResponse (cookieJar cookie))
     liftIO $ print roles
-    return $ srjRequests roles
+    return roles

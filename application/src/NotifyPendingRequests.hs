@@ -2,8 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module NotifyPendingRequests
-  (
-    MonadNotifyPendingRequests (..),
+  ( MonadNotifyPendingRequests (..),
   )
 where
 
@@ -12,12 +11,20 @@ import qualified Data.Text as T
 import Elvanto
 import Notifications
 
-pendingRequestsToNotifications :: [ServingRequest] -> Maybe Notification
-pendingRequestsToNotifications [] = Nothing
-pendingRequestsToNotifications requests =
-  let title = "Pending church serving requests in elvanto!"
-      body = T.unwords $ (\x -> srRole x <> "!") <$> requests
-   in Just $ Notification title body
+pendingRequestsToNotifications :: ServingRequests -> Maybe Notification
+pendingRequestsToNotifications (ServingRequests req sw) =
+  let body = (fmtRosterRequest <$> req) <> (fmtSwapRequest <$> sw)
+   in if null body
+        then Nothing
+        else Just (Notification "Pending elvanto requests: " $ T.unlines body)
+
+fmtRosterRequest :: RosterRequest -> T.Text
+fmtRosterRequest (RosterRequest role date) =
+  T.concat ["Request: ", role, " on ", date]
+
+fmtSwapRequest :: SwapRequest -> T.Text
+fmtSwapRequest (SwapRequest role date) =
+  T.concat ["Swap request", role, " on ", date]
 
 class (Monad m) => MonadNotifyPendingRequests m where
   notifyPendingRequests :: m ()

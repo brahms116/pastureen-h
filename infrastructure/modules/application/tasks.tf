@@ -59,7 +59,7 @@ resource "kubernetes_cron_job_v1" "notify_pending_serving_requests" {
   count = var.environment == "PRODUCTION" ? 1 : 0
 
   metadata {
-    name = "notify-overdue-todos"
+    name = "pending-serving-requests"
     namespace = local.namespace[var.environment]
   }
 

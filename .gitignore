@@ -119,3 +119,6 @@ stan.html
 
 # VS Code Counter (Visual Studio Code Extension)-related
 .VSCodeCounter
+
+**/node_modules/**
+

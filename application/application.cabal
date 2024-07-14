@@ -38,6 +38,7 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , blaze-html
     , bytestring
     , hspec
     , http-client
@@ -46,8 +47,13 @@ library
     , regex-tdfa
     , req
     , scotty
+    , servant
+    , servant-blaze
+    , servant-server
+    , shakespeare
     , text
     , time
+    , wai-middleware-static
     , warp
   default-language: Haskell2010
 
@@ -64,6 +70,7 @@ executable api-exe
       aeson
     , application
     , base >=4.7 && <5
+    , blaze-html
     , bytestring
     , hspec
     , http-client
@@ -72,8 +79,13 @@ executable api-exe
     , regex-tdfa
     , req
     , scotty
+    , servant
+    , servant-blaze
+    , servant-server
+    , shakespeare
     , text
     , time
+    , wai-middleware-static
     , warp
   default-language: Haskell2010
 
@@ -90,6 +102,7 @@ executable worker-exe
       aeson
     , application
     , base >=4.7 && <5
+    , blaze-html
     , bytestring
     , hspec
     , http-client
@@ -98,8 +111,13 @@ executable worker-exe
     , regex-tdfa
     , req
     , scotty
+    , servant
+    , servant-blaze
+    , servant-server
+    , shakespeare
     , text
     , time
+    , wai-middleware-static
     , warp
   default-language: Haskell2010
 
@@ -123,6 +141,7 @@ test-suite application-test
       aeson
     , application
     , base >=4.7 && <5
+    , blaze-html
     , bytestring
     , hspec
     , http-client
@@ -131,7 +150,12 @@ test-suite application-test
     , regex-tdfa
     , req
     , scotty
+    , servant
+    , servant-blaze
+    , servant-server
+    , shakespeare
     , text
     , time
+    , wai-middleware-static
     , warp
   default-language: Haskell2010

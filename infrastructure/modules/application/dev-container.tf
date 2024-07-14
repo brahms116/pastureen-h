@@ -41,8 +41,7 @@ resource "kubernetes_deployment" "development_container" {
           image_pull_policy = "Always"
 
           command = [
-            # Dunno why it has to run the api otherwise it just bad gateways
-            "stack", "run", "api-exe"
+            "tail", "-f", "/dev/null"
           ]
 
           dynamic "env" {
@@ -52,7 +51,7 @@ resource "kubernetes_deployment" "development_container" {
               value_from {
                 secret_key_ref {
                   name = "pt-secrets"
-                  key = env.value.name
+                  key  = env.value.name
                 }
               }
             }

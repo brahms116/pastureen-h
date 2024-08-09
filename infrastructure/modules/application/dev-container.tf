@@ -6,12 +6,12 @@ module "development_container_storage" {
   name        = local.application_dir_name[var.environment]
 }
 
-module "stack_dir_storage" {
+module "cabal_dir_storage" {
   count       = var.environment == "PRODUCTION" ? 0 : 1
   source      = "../storage"
   environment = var.environment
-  hostpath    = var.stack_dir
-  name        = local.stack_dir_name[var.environment]
+  hostpath    = var.cabal_dir
+  name        = local.cabal_dir_name[var.environment]
 }
 
 
@@ -67,8 +67,8 @@ resource "kubernetes_deployment" "development_container" {
           }
 
           volume_mount {
-            name       = "stack-dir"
-            mount_path = "/root/.stack"
+            name       = "cabal-dir"
+            mount_path = "/root/.cabal"
           }
 
         }
@@ -79,9 +79,9 @@ resource "kubernetes_deployment" "development_container" {
           }
         }
         volume {
-          name = "stack-dir"
+          name = "cabal-dir"
           persistent_volume_claim {
-            claim_name = local.stack_dir_name[var.environment]
+            claim_name = local.cabal_dir_name[var.environment]
           }
         }
       }

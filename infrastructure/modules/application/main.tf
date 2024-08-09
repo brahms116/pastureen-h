@@ -28,9 +28,9 @@ locals {
     "TEST"  = "application-dir-test",
   }
 
-  stack_dir_name = {
-    "LOCAL" = "stack-dir-local",
-    "TEST"  = "stack-dir-test",
+  cabal_dir_name = {
+    "LOCAL" = "cabal-dir-local",
+    "TEST"  = "cabal-dir-test",
   }
 
   api_host = {

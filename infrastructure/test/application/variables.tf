@@ -3,12 +3,12 @@ variable "noco_test_meta_dir" {
   type        = string
 }
 
-variable "stack_dir" {
-  description = "The absolute path for the global stack directory"
+variable "cabal_dir" {
+  description = "The absolute path for the global cabal directory"
   type        = string
 }
 
 variable "application_root" {
-  description = "The absolute path to the haskell stack application root"
+  description = "The absolute path to the haskell cabal application root"
   type        = string
 }

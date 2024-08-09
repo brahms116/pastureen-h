@@ -1,9 +1,5 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
---
--- see: https://github.com/sol/hpack
-
 name:           application
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/application#readme>
@@ -137,12 +133,15 @@ test-suite application-test
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-tool-depends:
+      hspec-discover:hspec-discover
   build-depends:
       aeson
     , application
     , base >=4.7 && <5
     , blaze-html
     , bytestring
+    , hspec-discover
     , hspec
     , http-client
     , mtl

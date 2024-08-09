@@ -23,6 +23,6 @@ module "application_deployment" {
   environment = "PRODUCTION"
   noco_meta_dir = "/var/lib/noco"
   # Not applicable for production
-  stack_dir = null
+  cabal_dir = null
   application_dir = null
 }

@@ -20,7 +20,7 @@ provider "kubernetes" {
 module "application_deployment" {
   source      = "../../modules/application"
   environment = "LOCAL"
-  stack_dir = var.stack_dir
+  cabal_dir = var.cabal_dir
   application_dir = var.application_root
   noco_meta_dir = var.noco_meta_dir
 }

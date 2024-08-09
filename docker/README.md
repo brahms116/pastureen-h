@@ -26,12 +26,10 @@ The container containing the application to run misc tasks
 
 Build the application first using the development container
 
-```
-kl exec -it deployment/development-container -- stack build :worker-exe --copy-bins --local-bin-path ./dist
-```
 
-This will place the built exe into:  
-`PROJECT_ROOT/application/dist`
+```
+kl exec -it deployment/development-container -- cabal install application:worker-exe --installdir=./dist --install-method=copy --overwrite-policy=always
+```
 
 Then copy the ugly file over and load it into the new image
 

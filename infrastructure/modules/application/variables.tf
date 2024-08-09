@@ -15,8 +15,8 @@ variable "application_dir" {
   nullable    = true
 }
 
-variable "stack_dir" {
-  description = "Host path for the global stack directory"
+variable "cabal_dir" {
+  description = "Host path for the global cabal directory"
   type        = string
   # Not applicable for production
   nullable    = true

@@ -26,7 +26,6 @@ The container containing the application to run misc tasks
 
 Build the application first using the development container
 
-
 ```
 kl exec -it deployment/development-container -- cabal install application:worker-exe --installdir=./dist --install-method=copy --overwrite-policy=always
 ```

@@ -34,23 +34,14 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
-    , blaze-html
     , bytestring
-    , hspec
     , http-client
     , mtl
     , neat-interpolation
     , regex-tdfa
     , req
-    , scotty
-    , servant
-    , servant-blaze
-    , servant-server
-    , shakespeare
     , text
     , time
-    , wai-middleware-static
-    , warp
   default-language: Haskell2010
 
 executable api-exe
@@ -68,20 +59,17 @@ executable api-exe
     , base >=4.7 && <5
     , blaze-html
     , bytestring
-    , hspec
     , http-client
     , mtl
     , neat-interpolation
     , regex-tdfa
     , req
-    , scotty
     , servant
     , servant-blaze
     , servant-server
     , shakespeare
     , text
     , time
-    , wai-middleware-static
     , warp
   default-language: Haskell2010
 
@@ -106,15 +94,8 @@ executable worker-exe
     , neat-interpolation
     , regex-tdfa
     , req
-    , scotty
-    , servant
-    , servant-blaze
-    , servant-server
-    , shakespeare
     , text
     , time
-    , wai-middleware-static
-    , warp
   default-language: Haskell2010
 
 test-suite application-test
